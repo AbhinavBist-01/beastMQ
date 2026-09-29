@@ -15,6 +15,13 @@
       "when": 1790689168821,
       "tag": "0001_futuristic_hawkeye",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790699941046,
+      "tag": "0002_classy_wildside",
+      "breakpoints": true
     }
   ]
 }

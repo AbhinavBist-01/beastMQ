@@ -1,0 +1,1 @@
+ALTER TABLE "jobs" ADD COLUMN "available_at" timestamp DEFAULT now() NOT NULL;

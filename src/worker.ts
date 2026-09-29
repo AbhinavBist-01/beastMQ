@@ -1,11 +1,17 @@
 import { db } from "./db/index.js";
 import { jobs } from "./db/schema.js";
-import { eq, sql, and, or, lt } from "drizzle-orm";
+import { eq, and, or, lt, lte, sql } from "drizzle-orm";
 import crypto from "node:crypto";
 
 const workerId = crypto.randomUUID();
 
 console.log(`Worker ${workerId} started`);
+
+function getRetryDelay(attempt: number) {
+  const baseDelay = 1000;
+
+  return baseDelay * Math.pow(2, attempt - 1);
+}
 
 function startheartbeat(jobId: string) {
   const interval = setInterval(async () => {
@@ -35,7 +41,7 @@ async function claimJob() {
       .from(jobs)
       .where(
         or(
-          eq(jobs.status, "pending"),
+          and(eq(jobs.status, "pending"), lte(jobs.availableAt, now)),
 
           and(eq(jobs.status, "running"), lt(jobs.lockedUntil, now)),
         ),
@@ -52,9 +58,13 @@ async function claimJob() {
       .update(jobs)
       .set({
         status: "running",
-        updatedAt: new Date(),
+
+        attempts: sql`${jobs.attempts} + 1`,
+
         lockedBy: workerId,
         lockedUntil,
+
+        updatedAt: new Date(),
       })
       .where(eq(jobs.id, job.id))
       .returning();
@@ -74,7 +84,7 @@ async function processJobs() {
   const heartbeat = startheartbeat(job.id);
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 120_000));
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
 
     await db
       .update(jobs)
@@ -87,11 +97,25 @@ async function processJobs() {
       .where(eq(jobs.id, job.id));
     console.log(`Job with ID: ${job.id} completed successfully.`);
   } catch (error) {
+    const delay = getRetryDelay(job.attempts);
+
+    const availableAt = new Date(Date.now() + delay);
+
     await db
       .update(jobs)
-      .set({ status: "failed", updatedAt: new Date() })
+      .set({
+        status: "pending",
+
+        availableAt,
+
+        lockedBy: null,
+        lockedUntil: null,
+
+        updatedAt: new Date(),
+      })
       .where(eq(jobs.id, job.id));
-    console.error(`Job with ID: ${job.id} failed with error:`, error);
+
+    console.error(`Job ${job.id} failed. Retrying in ${delay}ms`);
   } finally {
     clearInterval(heartbeat);
   }

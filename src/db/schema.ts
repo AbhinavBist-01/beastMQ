@@ -18,6 +18,8 @@ export const jobs = pgTable("jobs", {
   lockedBy: text("locked_by"),
   lockedUntil: timestamp("locked_until"),
 
+  availableAt: timestamp("available_at").notNull().defaultNow(),
+
   attempts: integer("attempts").notNull().default(0),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
