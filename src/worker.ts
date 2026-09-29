@@ -1,6 +1,6 @@
 import { db } from "./db/index.js";
 import { jobs } from "./db/schema.js";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, or, lt } from "drizzle-orm";
 import crypto from "node:crypto";
 
 const workerId = crypto.randomUUID();
@@ -28,11 +28,18 @@ function startheartbeat(jobId: string) {
 }
 
 async function claimJob() {
+  const now = new Date();
   return await db.transaction(async (tx) => {
     const [job] = await tx
       .select()
       .from(jobs)
-      .where(eq(jobs.status, "pending"))
+      .where(
+        or(
+          eq(jobs.status, "pending"),
+
+          and(eq(jobs.status, "running"), lt(jobs.lockedUntil, now)),
+        ),
+      )
       .orderBy(jobs.createdAt)
       .limit(1)
       .for("update", { skipLocked: true });
@@ -67,11 +74,16 @@ async function processJobs() {
   const heartbeat = startheartbeat(job.id);
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 120_000));
 
     await db
       .update(jobs)
-      .set({ status: "completed", updatedAt: new Date() })
+      .set({
+        status: "completed",
+        lockedBy: null,
+        lockedUntil: null,
+        updatedAt: new Date(),
+      })
       .where(eq(jobs.id, job.id));
     console.log(`Job with ID: ${job.id} completed successfully.`);
   } catch (error) {
