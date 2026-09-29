@@ -7,6 +7,66 @@ const workerId = crypto.randomUUID();
 
 console.log(`Worker ${workerId} started`);
 
+async function claimIdempotencyKey(key: string) {
+  const now = new Date();
+
+  const [record] = await db
+    .insert(idempotencyKeys)
+    .values({
+      key,
+      status: "processing",
+      lockedBy: workerId,
+      lockedUntil: new Date(Date.now() + 5 * 60 * 1000),
+    })
+    .onConflictDoNothing()
+    .returning();
+
+  return record;
+}
+
+async function getIdempotencyKey(key: string) {
+  const [record] = await db
+    .select()
+    .from(idempotencyKeys)
+    .where(eq(idempotencyKeys.key, key));
+
+  return record;
+}
+
+async function acquireIdempotencyKey(key: string) {
+  // 1. Try creating it
+  const created = await claimIdempotencyKey(key);
+
+  if (created) {
+    return "acquired";
+  }
+
+  // 2. It already exists
+  const existing = await getIdempotencyKey(key);
+
+  if (!existing) {
+    return "retry";
+  }
+
+  // 3. Already completed
+  if (existing.status === "completed") {
+    return "completed";
+  }
+
+  // 4. Someone else still owns it
+  if (
+    existing.status === "processing" &&
+    existing.lockedUntil &&
+    existing.lockedUntil > new Date()
+  ) {
+    return "processing";
+  }
+
+  // 5. Lease expired → reclaim
+  // we'll implement this next
+  return "expired";
+}
+
 function getRetryDelay(attempt: number) {
   const baseDelay = 1000;
 
@@ -79,22 +139,18 @@ async function processJobs() {
     console.log("No jobs available.");
     return;
   }
+
   console.log(`Processing job with ID: ${job.id}`);
 
   const heartbeat = startheartbeat(job.id);
   try {
     if (job.idempotencyKey) {
-      const [record] = await db
-        .select()
-        .from(idempotencyKeys)
-        .where(eq(idempotencyKeys.key, job.idempotencyKey))
-        .limit(1);
+      const result = await acquireIdempotencyKey(job.idempotencyKey);
 
-      if (record?.status === "completed") {
+      if (result === "completed") {
         console.log(
-          `Job with idempotency key ${job.idempotencyKey} has already been completed. Skipping job ${job.id}.`,
+          `Job with idempotency key ${job.idempotencyKey} has already been completed.`,
         );
-
         await db
           .update(jobs)
           .set({
@@ -106,19 +162,31 @@ async function processJobs() {
           .where(eq(jobs.id, job.id));
         return;
       }
-    }
-  } catch (error) {
-    console.error(`Error occurred while checking idempotency: ${error}`);
-  }
-  try {
-    if (job.idempotencyKey) {
-      await db
-        .insert(idempotencyKeys)
-        .values({
-          key: job.idempotencyKey,
-          status: "processing",
-        })
-        .onConflictDoNothing();
+
+      if (result === "processing") {
+        console.log(
+          `Idempotency key ${job.idempotencyKey} is being processed by another worker.`,
+        );
+
+        await db
+          .update(jobs)
+          .set({
+            status: "pending",
+            lockedBy: null,
+            lockedUntil: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobs.id, job.id));
+
+        return;
+      }
+
+      if (result === "expired") {
+        console.log(`Idempotency lease expired for ${job.idempotencyKey}.`);
+
+        // We will implement takeover next.
+        return;
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, 10_000));
 

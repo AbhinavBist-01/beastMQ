@@ -51,6 +51,10 @@ export const idempotencyKeys = pgTable("idempotency_keys", {
 
   result: jsonb("result"),
 
+  lockedBy: text("locked_by"),
+
+  lockedUntil: timestamp("locked_until"),
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
 
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
