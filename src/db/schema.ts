@@ -15,6 +15,8 @@ export const jobs = pgTable("jobs", {
   payload: jsonb("payload").notNull(),
 
   status: text("status").notNull().default("pending"),
+  lockedBy: text("locked_by"),
+  lockedUntil: timestamp("locked_until"),
 
   attempts: integer("attempts").notNull().default(0),
 

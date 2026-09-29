@@ -8,6 +8,13 @@
       "when": 1790615530805,
       "tag": "0000_woozy_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790689168821,
+      "tag": "0001_futuristic_hawkeye",
+      "breakpoints": true
     }
   ]
 }
