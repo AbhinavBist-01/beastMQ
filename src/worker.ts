@@ -1,5 +1,5 @@
 import { db } from "./db/index.js";
-import { jobs } from "./db/schema.js";
+import { jobs, deadJobs } from "./db/schema.js";
 import { eq, and, or, lt, lte, sql } from "drizzle-orm";
 import crypto from "node:crypto";
 
@@ -97,25 +97,48 @@ async function processJobs() {
       .where(eq(jobs.id, job.id));
     console.log(`Job with ID: ${job.id} completed successfully.`);
   } catch (error) {
-    const delay = getRetryDelay(job.attempts);
+    const MAX_ATTEMPTS = 5;
 
-    const availableAt = new Date(Date.now() + delay);
+    if (job.attempts >= MAX_ATTEMPTS) {
+      await db.insert(deadJobs).values({
+        jobId: job.id,
+        type: job.type,
+        payload: job.payload,
+        attempts: job.attempts,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
-    await db
-      .update(jobs)
-      .set({
-        status: "pending",
+      await db
+        .update(jobs)
+        .set({
+          status: "dead",
+          lockedBy: null,
+          lockedUntil: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(jobs.id, job.id));
 
-        availableAt,
+      console.error(
+        `Job ${job.id} failed after ${job.attempts} attempts. Moved to dead jobs.`,
+      );
+    } else {
+      const delay = getRetryDelay(job.attempts);
 
-        lockedBy: null,
-        lockedUntil: null,
+      const availableAt = new Date(Date.now() + delay);
 
-        updatedAt: new Date(),
-      })
-      .where(eq(jobs.id, job.id));
+      await db
+        .update(jobs)
+        .set({
+          status: "pending",
+          availableAt,
+          lockedBy: null,
+          lockedUntil: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(jobs.id, job.id));
 
-    console.error(`Job ${job.id} failed. Retrying in ${delay}ms`);
+      console.error(`Job ${job.id} failed. Retrying in ${delay}ms`);
+    }
   } finally {
     clearInterval(heartbeat);
   }

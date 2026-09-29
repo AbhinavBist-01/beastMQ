@@ -26,3 +26,19 @@ export const jobs = pgTable("jobs", {
 
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const deadJobs = pgTable("dead_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  jobId: uuid("job_id").notNull(),
+
+  type: text("type").notNull(),
+
+  payload: jsonb("payload").notNull(),
+
+  attempts: integer("attempts").notNull(),
+
+  error: text("error"),
+
+  failedAt: timestamp("failed_at").notNull().defaultNow(),
+});
