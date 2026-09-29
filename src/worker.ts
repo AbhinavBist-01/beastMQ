@@ -1,5 +1,5 @@
 import { db } from "./db/index.js";
-import { jobs, deadJobs } from "./db/schema.js";
+import { jobs, deadJobs, idempotencyKeys } from "./db/schema.js";
 import { eq, and, or, lt, lte, sql } from "drizzle-orm";
 import crypto from "node:crypto";
 
@@ -82,9 +82,55 @@ async function processJobs() {
   console.log(`Processing job with ID: ${job.id}`);
 
   const heartbeat = startheartbeat(job.id);
-
   try {
+    if (job.idempotencyKey) {
+      const [record] = await db
+        .select()
+        .from(idempotencyKeys)
+        .where(eq(idempotencyKeys.key, job.idempotencyKey))
+        .limit(1);
+
+      if (record?.status === "completed") {
+        console.log(
+          `Job with idempotency key ${job.idempotencyKey} has already been completed. Skipping job ${job.id}.`,
+        );
+
+        await db
+          .update(jobs)
+          .set({
+            status: "completed",
+            lockedBy: null,
+            lockedUntil: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobs.id, job.id));
+        return;
+      }
+    }
+  } catch (error) {
+    console.error(`Error occurred while checking idempotency: ${error}`);
+  }
+  try {
+    if (job.idempotencyKey) {
+      await db
+        .insert(idempotencyKeys)
+        .values({
+          key: job.idempotencyKey,
+          status: "processing",
+        })
+        .onConflictDoNothing();
+    }
     await new Promise((resolve) => setTimeout(resolve, 10_000));
+
+    if (job.idempotencyKey) {
+      await db
+        .update(idempotencyKeys)
+        .set({
+          status: "completed",
+          updatedAt: new Date(),
+        })
+        .where(eq(idempotencyKeys.key, job.idempotencyKey));
+    }
 
     await db
       .update(jobs)

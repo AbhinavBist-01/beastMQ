@@ -9,13 +9,18 @@ const app = express();
 app.use(express.json());
 
 app.post("/jobs", async (req, res) => {
-  const body = req.body as { type: string; payload: unknown };
+  const body = req.body as {
+    type: string;
+    payload: unknown;
+    idempotencyKey?: string;
+  };
 
   const [job] = await db
     .insert(jobs)
     .values({
       type: body.type,
       payload: body.payload,
+      idempotencyKey: body.idempotencyKey,
     })
     .returning();
 
