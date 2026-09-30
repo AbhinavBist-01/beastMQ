@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 
+import { eq } from "drizzle-orm";
 import { db } from "./db/index.js";
 import { jobs } from "./db/schema.js";
 
@@ -16,7 +17,7 @@ app.post("/jobs", async (req, res) => {
     priority?: number;
   };
 
-  const [job] = await db
+  let [job] = await db
     .insert(jobs)
     .values({
       type: body.type,
@@ -24,7 +25,18 @@ app.post("/jobs", async (req, res) => {
       idempotencyKey: body.idempotencyKey,
       priority: body.priority,
     })
+    .onConflictDoNothing()
     .returning();
+
+  if (!job && body.idempotencyKey) {
+    [job] = await db
+      .select()
+      .from(jobs)
+      .where(eq(jobs.idempotencyKey, body.idempotencyKey));
+    if (job) {
+      return res.status(200).json({ id: job.id, status: job.status, duplicate: true });
+    }
+  }
 
   if (!job) {
     return res.status(500).json({ error: "Failed to create job" });

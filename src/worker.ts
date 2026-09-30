@@ -1,4 +1,4 @@
-import { db } from "./db/index.js";
+import { db, pool } from "./db/index.js";
 import { jobs, deadJobs, idempotencyKeys } from "./db/schema.js";
 import { eq, and, or, lt, lte, sql, asc, desc } from "drizzle-orm";
 import crypto from "node:crypto";
@@ -18,10 +18,27 @@ process.on("SIGTERM", () => {
   shuttingDown = true;
 });
 
-const CONCURRENCY = 5;
-const MIN_POLL_DELAY = 100;
-const MAX_POLL_DELAY = 5000;
-const JOB_TIMEOUT = 30_000;
+process.on("message", (msg) => {
+  if (msg === "SIGINT" || msg === "SIGTERM" || msg === "shutdown") {
+    console.log("Shutdown signal received via IPC...");
+    shuttingDown = true;
+  }
+});
+
+try {
+  process.stdin.on("data", (data) => {
+    if (data.toString().includes("shutdown")) {
+      console.log("Shutdown signal received via stdin...");
+      shuttingDown = true;
+    }
+  });
+} catch {}
+
+const CONCURRENCY = parseInt(process.env.CONCURRENCY || "5", 10);
+const MIN_POLL_DELAY = parseInt(process.env.MIN_POLL_DELAY || "100", 10);
+const MAX_POLL_DELAY = parseInt(process.env.MAX_POLL_DELAY || "5000", 10);
+const JOB_TIMEOUT = parseInt(process.env.JOB_TIMEOUT || "30000", 10);
+const LEASE_DURATION_MS = parseInt(process.env.LEASE_DURATION_MS || "300000", 10);
 
 async function claimIdempotencyKey(key: string) {
   const [record] = await db
@@ -30,7 +47,7 @@ async function claimIdempotencyKey(key: string) {
       key,
       status: "processing",
       lockedBy: workerId,
-      lockedUntil: new Date(Date.now() + 5 * 60 * 1000),
+      lockedUntil: new Date(Date.now() + LEASE_DURATION_MS),
     })
     .onConflictDoNothing()
     .returning();
@@ -80,7 +97,7 @@ async function acquireIdempotencyKey(key: string) {
     .update(idempotencyKeys)
     .set({
       lockedBy: workerId,
-      lockedUntil: new Date(Date.now() + 5 * 60 * 1000),
+      lockedUntil: new Date(Date.now() + LEASE_DURATION_MS),
       updatedAt: new Date(),
     })
     .where(
@@ -164,7 +181,7 @@ async function claimJob() {
 
     if (!job) return null;
 
-    const lockedUntil = new Date(Date.now() + 5 * 60 * 1000);
+    const lockedUntil = new Date(Date.now() + LEASE_DURATION_MS);
 
     const [claimedJob] = await tx
       .update(jobs)
@@ -255,8 +272,20 @@ async function processJobs(): Promise<boolean> {
 
     heartbeat = startHeartbeat(job.id, job.idempotencyKey);
 
+    const payload = job.payload as {
+      durationMs?: number;
+      shouldFail?: boolean;
+      errorMessage?: string;
+    } | null;
+
+    if (payload?.shouldFail) {
+      throw new Error(payload.errorMessage ?? "Job forced failure");
+    }
+
+    const duration = payload?.durationMs ?? 1000;
+
     await Promise.race([
-      new Promise((resolve) => setTimeout(resolve, 10_000)),
+      new Promise((resolve) => setTimeout(resolve, duration)),
 
       new Promise((_, reject) =>
         setTimeout(
@@ -376,5 +405,9 @@ async function startWoker() {
   );
   await Promise.all(workers);
   console.log("All workers stopped gracefully.");
+  try {
+    await pool.end();
+  } catch {}
+  process.exit(0);
 }
 startWoker();
