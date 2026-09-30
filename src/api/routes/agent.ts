@@ -2,15 +2,26 @@ import { Router } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { jobs } from "../../db/schema.js";
+import { isValidUUID } from "../validation.js";
 
 const router = Router();
 
 // POST /agent/tasks - Tailored agent dispatch endpoint
 router.post("/tasks", async (req, res) => {
-  const { type, payload, priority = 0, idempotencyKey, traceId, parentJobId, agentRole } = req.body;
+  const {
+    type,
+    payload,
+    priority = 0,
+    idempotencyKey,
+    traceId,
+    parentJobId,
+    agentRole,
+  } = req.body;
 
   if (!type || payload === undefined) {
-    return res.status(400).json({ error: "Missing required 'type' or 'payload'" });
+    return res
+      .status(400)
+      .json({ error: "Missing required 'type' or 'payload'" });
   }
 
   const [job] = await db
@@ -28,9 +39,14 @@ router.post("/tasks", async (req, res) => {
     .returning();
 
   if (!job && idempotencyKey) {
-    const [existing] = await db.select().from(jobs).where(eq(jobs.idempotencyKey, idempotencyKey));
+    const [existing] = await db
+      .select()
+      .from(jobs)
+      .where(eq(jobs.idempotencyKey, idempotencyKey));
     if (existing) {
-      return res.status(200).json({ id: existing.id, status: existing.status, duplicate: true });
+      return res
+        .status(200)
+        .json({ id: existing.id, status: existing.status, duplicate: true });
     }
   }
 
@@ -54,10 +70,17 @@ router.get("/traces/:traceId", async (req, res) => {
 
 // GET /agent/tasks/:id/subtasks - Query child subtasks of a parent job
 router.get("/tasks/:id/subtasks", async (req, res) => {
+  const id = req.params.id;
+  if (!isValidUUID(id)) {
+    return res
+      .status(400)
+      .json({ error: `Invalid UUID format for parent job ID: ${id}` });
+  }
+
   const list = await db
     .select()
     .from(jobs)
-    .where(eq(jobs.parentJobId, req.params.id))
+    .where(eq(jobs.parentJobId, id))
     .orderBy(desc(jobs.createdAt));
 
   return res.status(200).json(list);

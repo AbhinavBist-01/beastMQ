@@ -107,3 +107,18 @@ export async function completeIdempotencyKey(
       ),
     );
 }
+
+export async function pruneExpiredIdempotencyKeys(retentionDays: number = 7): Promise<number> {
+  const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+  const deleted = await db
+    .delete(idempotencyKeys)
+    .where(
+      and(
+        eq(idempotencyKeys.status, "completed"),
+        lt(idempotencyKeys.updatedAt, cutoffDate),
+      ),
+    )
+    .returning();
+
+  return deleted.length;
+}

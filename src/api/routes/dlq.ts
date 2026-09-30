@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { jobs, deadJobs } from "../../db/schema.js";
+import { isValidUUID } from "../validation.js";
 
 const router = Router();
 
@@ -20,10 +21,15 @@ router.get("/", async (req, res) => {
 
 // POST /dead-jobs/:id/replay - Replay a dead job back into jobs table
 router.post("/:id/replay", async (req, res) => {
+  const id = req.params.id;
+  if (!isValidUUID(id)) {
+    return res.status(400).json({ error: `Invalid UUID format for dead job ID: ${id}` });
+  }
+
   const [deadRecord] = await db
     .select()
     .from(deadJobs)
-    .where(eq(deadJobs.id, req.params.id));
+    .where(eq(deadJobs.id, id));
 
   if (!deadRecord) {
     return res.status(404).json({ error: `Dead job record ${req.params.id} not found` });

@@ -7,9 +7,19 @@ export interface WaitForJobOptions {
 
 export class BeastMQClient {
   private baseUrl: string;
+  private apiKey?: string | undefined;
 
-  constructor(baseUrl?: string) {
-    this.baseUrl = (baseUrl || process.env.BEASTM_URL || "http://localhost:3000").replace(/\/$/, "");
+  constructor(baseUrl?: string, apiKey?: string) {
+    this.baseUrl = (baseUrl || process.env.BEASTMQ_URL || process.env.BEASTM_URL || "http://localhost:3000").replace(/\/$/, "");
+    this.apiKey = apiKey || process.env.BEASTMQ_API_KEY;
+  }
+
+  private getHeaders(extra?: Record<string, string>): Record<string, string> {
+    const headers: Record<string, string> = { ...extra };
+    if (this.apiKey) {
+      headers["x-api-key"] = this.apiKey;
+    }
+    return headers;
   }
 
   /**
@@ -18,7 +28,7 @@ export class BeastMQClient {
   async enqueue(input: EnqueueJobInput): Promise<EnqueueJobResult> {
     const res = await fetch(`${this.baseUrl}/jobs`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.getHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(input),
     });
 
@@ -34,7 +44,9 @@ export class BeastMQClient {
    * Fetches job metadata, status, and result by ID.
    */
   async getJob(id: string): Promise<JobRecord | null> {
-    const res = await fetch(`${this.baseUrl}/jobs/${id}`);
+    const res = await fetch(`${this.baseUrl}/jobs/${id}`, {
+      headers: this.getHeaders(),
+    });
     if (res.status === 404) return null;
     if (!res.ok) {
       throw new Error(`Failed to fetch job ${id} (${res.status})`);
@@ -50,7 +62,9 @@ export class BeastMQClient {
     if (options?.status) params.set("status", options.status);
     if (options?.limit !== undefined) params.set("limit", options.limit.toString());
 
-    const res = await fetch(`${this.baseUrl}/jobs?${params.toString()}`);
+    const res = await fetch(`${this.baseUrl}/jobs?${params.toString()}`, {
+      headers: this.getHeaders(),
+    });
     if (!res.ok) {
       throw new Error(`Failed to list jobs (${res.status})`);
     }
@@ -100,7 +114,9 @@ export class BeastMQClient {
    * Lists child subtasks of a parent job.
    */
   async getSubtasks(parentJobId: string): Promise<JobRecord[]> {
-    const res = await fetch(`${this.baseUrl}/agent/tasks/${parentJobId}/subtasks`);
+    const res = await fetch(`${this.baseUrl}/agent/tasks/${parentJobId}/subtasks`, {
+      headers: this.getHeaders(),
+    });
     if (!res.ok) {
       throw new Error(`Failed to fetch subtasks for ${parentJobId} (${res.status})`);
     }
@@ -111,7 +127,9 @@ export class BeastMQClient {
    * Retrieves Dead Letter Queue (DLQ) records.
    */
   async listDeadJobs(): Promise<DeadJobRecord[]> {
-    const res = await fetch(`${this.baseUrl}/dead-jobs`);
+    const res = await fetch(`${this.baseUrl}/dead-jobs`, {
+      headers: this.getHeaders(),
+    });
     if (!res.ok) {
       throw new Error(`Failed to list dead jobs (${res.status})`);
     }
@@ -124,6 +142,7 @@ export class BeastMQClient {
   async replayDeadJob(id: string): Promise<{ replayed: boolean; jobId: string }> {
     const res = await fetch(`${this.baseUrl}/dead-jobs/${id}/replay`, {
       method: "POST",
+      headers: this.getHeaders(),
     });
     if (!res.ok) {
       throw new Error(`Failed to replay dead job ${id} (${res.status})`);

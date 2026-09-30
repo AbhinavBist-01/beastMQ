@@ -4,150 +4,177 @@ import { BeastMQClient } from "../src/agent/client.js";
 import { taskRegistry } from "../src/agent/registry.js";
 import { WorkerRunner } from "../src/worker/runner.js";
 import { pool } from "../src/db/index.js";
+import { pruneExpiredIdempotencyKeys } from "../src/core/idempotency.js";
 
-async function runVulnerabilityAudit() {
+async function verifyPatches() {
   console.log("\n========================================================");
-  console.log("🔍 beastMQ SECURITY & RESILIENCE AUDIT");
+  console.log("🛡️ VERIFYING SECURITY PATCHES & RESILIENCE MITIGATIONS");
   console.log("========================================================\n");
 
-  const TEST_PORT = 3299;
+  const TEST_PORT = 3298;
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(TEST_PORT, () => resolve()));
   const baseUrl = `http://localhost:${TEST_PORT}`;
   const client = new BeastMQClient(baseUrl);
 
-  const findings: Array<{ title: string; severity: "HIGH" | "MEDIUM" | "LOW"; description: string; verified: boolean }> = [];
+  let passedChecks = 0;
 
   // -------------------------------------------------------------------------
-  // TEST 1: Unhandled UUID Type Casting (SQL syntax error 22P02)
+  // TEST 1: UUID Validation (Expected: 400 Bad Request, not 500)
   // -------------------------------------------------------------------------
   console.log("Test 1: Testing invalid UUID input to GET /jobs/:id...");
-  try {
-    const res = await fetch(`${baseUrl}/jobs/not-a-valid-uuid`);
-    const status = res.status;
-    const body = await res.text();
-    console.log(`   Response status: ${status}, Body: ${body.slice(0, 100)}`);
-    if (status === 500) {
-      findings.push({
-        title: "PostgreSQL UUID Syntax Error (500 Unhandled Exception)",
-        severity: "MEDIUM",
-        description: "Passing a non-UUID string to /jobs/:id or /dead-jobs/:id triggers Postgres error 22P02, returning an unhandled 500 internal server error instead of a 400 Bad Request.",
-        verified: true,
-      });
-      console.log("   ⚠️ VULNERABILITY CONFIRMED: 500 Internal Server Error on invalid UUID");
-    }
-  } catch (err: any) {
-    console.log("   Error:", err.message);
+  const res1 = await fetch(`${baseUrl}/jobs/invalid-uuid-string`);
+  const body1 = await res1.json();
+  console.log(`   Status: ${res1.status}, Response:`, body1);
+  if (res1.status === 400 && body1.error?.includes("Invalid UUID format")) {
+    console.log("   ✅ PATCH VERIFIED: Invalid UUID cleanly rejected with 400 Bad Request!");
+    passedChecks++;
+  } else {
+    throw new Error(`Expected 400 Bad Request, got ${res1.status}`);
   }
 
   // -------------------------------------------------------------------------
-  // TEST 2: Type Column Overflow (> 255 chars)
+  // TEST 2: Type Column Overflow Validation (Expected: 400 Bad Request)
   // -------------------------------------------------------------------------
   console.log("\nTest 2: Testing oversized 'type' field (> 255 chars)...");
-  try {
-    const longType = "a".repeat(300);
-    const res = await fetch(`${baseUrl}/jobs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: longType, payload: { test: true } }),
-    });
-    console.log(`   Response status: ${res.status}`);
-    if (res.status === 500) {
-      findings.push({
-        title: "Database String Truncation / Overflow Failure",
-        severity: "LOW",
-        description: "The 'type' column is defined as varchar(255). Submitting a type string > 255 characters triggers a Postgres schema violation without input validation.",
-        verified: true,
-      });
-      console.log("   ⚠️ VULNERABILITY CONFIRMED: 500 Internal Server Error on varchar(255) overflow");
-    }
-  } catch (err: any) {
-    console.log("   Error:", err.message);
+  const longType = "x".repeat(300);
+  const res2 = await fetch(`${baseUrl}/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: longType, payload: { test: true } }),
+  });
+  const body2 = await res2.json();
+  console.log(`   Status: ${res2.status}, Response:`, body2);
+  if (res2.status === 400 && body2.error?.includes("exceeds maximum length")) {
+    console.log("   ✅ PATCH VERIFIED: Oversized type string cleanly rejected with 400 Bad Request!");
+    passedChecks++;
+  } else {
+    throw new Error(`Expected 400 Bad Request, got ${res2.status}`);
   }
 
   // -------------------------------------------------------------------------
-  // TEST 3: Zombie Task Execution / Lack of AbortSignal on Timeout
+  // TEST 3: Invalid parentJobId UUID validation
   // -------------------------------------------------------------------------
-  console.log("\nTest 3: Testing Zombie Task Execution on Timeout...");
-  let zombieRanAfterTimeout = false;
-  taskRegistry.register("test.zombie", async (_payload, _context) => {
-    console.log("   [Zombie Task] Started task, sleeping 2000ms...");
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    zombieRanAfterTimeout = true;
-    console.log("   [Zombie Task] 🧟 STILL RUNNING after timeout expired!");
-    return { finished: true };
+  console.log("\nTest 3: Testing invalid parentJobId on POST /jobs...");
+  const res3 = await fetch(`${baseUrl}/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "test.valid", payload: {}, parentJobId: "not-uuid" }),
+  });
+  const body3 = await res3.json();
+  console.log(`   Status: ${res3.status}, Response:`, body3);
+  if (res3.status === 400 && body3.error?.includes("parentJobId")) {
+    console.log("   ✅ PATCH VERIFIED: Invalid parentJobId rejected with 400 Bad Request!");
+    passedChecks++;
+  } else {
+    throw new Error(`Expected 400 Bad Request, got ${res3.status}`);
+  }
+
+  // -------------------------------------------------------------------------
+  // TEST 4: Zombie Task Prevention via AbortSignal
+  // -------------------------------------------------------------------------
+  console.log("\nTest 4: Testing AbortSignal task cancellation on timeout...");
+  let handlerAbortedCleanly = false;
+  let codeRanAfterAbort = false;
+
+  taskRegistry.register("test.abortable", async (_payload, context) => {
+    console.log("   [Handler] Started task, listening to context.signal...");
+    context.signal.addEventListener("abort", () => {
+      console.log("   [Handler] 🛑 Received abort signal! Reason:", context.signal.reason?.message);
+      handlerAbortedCleanly = true;
+    });
+
+    // Abortable sleep pattern
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        codeRanAfterAbort = true;
+        resolve();
+      }, 1500);
+
+      context.signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(context.signal.reason);
+      }, { once: true });
+    });
   });
 
-  const worker = new WorkerRunner({ jobTimeoutMs: 500, minPollDelayMs: 50 });
+  const worker = new WorkerRunner({ jobTimeoutMs: 300, minPollDelayMs: 50 });
   const job = await client.enqueue({
-    type: "test.zombie",
+    type: "test.abortable",
     payload: {},
+    priority: 1000,
   });
 
-  console.log(`   Enqueued job ${job.id} with 500ms timeout. Running worker...`);
-  await worker.processSingleJob(); // Times out at 500ms
-  console.log("   Worker finished processing job (timed out). Waiting 2000ms to see if zombie code still runs...");
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  console.log(`   Enqueued job ${job.id} with 300ms timeout. Processing job...`);
+  await worker.processSingleJob(); // Times out at 300ms
 
-  if (zombieRanAfterTimeout) {
-    findings.push({
-      title: "Zombie Task Execution (No AbortSignal Cancellation)",
-      severity: "HIGH",
-      description: "When a job exceeds JOB_TIMEOUT, Promise.race rejects and moves the job to retry/failure, but the underlying async promise continues running indefinitely in Node.js, consuming memory, CPU, and potentially performing conflicting operations.",
-      verified: true,
-    });
-    console.log("   ⚠️ VULNERABILITY CONFIRMED: Zombie task executed in background despite timeout!");
+  // Wait to confirm zombie code did NOT run
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+
+  if (handlerAbortedCleanly && !codeRanAfterAbort) {
+    console.log("   ✅ PATCH VERIFIED: Handler received abort signal and ceased execution cleanly (No zombie task)!");
+    passedChecks++;
+  } else {
+    throw new Error(`AbortSignal verification failed: handlerAborted=${handlerAbortedCleanly}, codeRanAfter=${codeRanAfterAbort}`);
   }
 
   // -------------------------------------------------------------------------
-  // TEST 4: Missing Authentication / Authorization
+  // TEST 5: Idempotency Key Pruning
   // -------------------------------------------------------------------------
-  console.log("\nTest 4: Checking Authentication / Authorization...");
-  const authRes = await fetch(`${baseUrl}/jobs`);
-  if (authRes.status === 200) {
-    findings.push({
-      title: "Unauthenticated API Endpoints",
-      severity: "HIGH",
-      description: "All HTTP endpoints (/jobs, /dead-jobs, /agent/tasks) lack authentication (API keys, Bearer tokens). Any client on the network can enqueue jobs, view payloads/results, or trigger DLQ replays.",
-      verified: true,
-    });
-    console.log("   ⚠️ VULNERABILITY CONFIRMED: Endpoints accessible without authentication.");
+  console.log("\nTest 5: Testing idempotency key pruning...");
+  const pruned = await pruneExpiredIdempotencyKeys(30);
+  console.log(`   Pruned ${pruned} expired idempotency keys.`);
+  console.log("   ✅ PATCH VERIFIED: Idempotency pruning query executed successfully!");
+  passedChecks++;
+
+  // -------------------------------------------------------------------------
+  // TEST 6: Connection Pool Sizing
+  // -------------------------------------------------------------------------
+  console.log("\nTest 6: Checking PostgreSQL connection pool settings...");
+  console.log(`   Pool max connections configured: ${(pool as any).options.max}`);
+  if ((pool as any).options.max >= 20) {
+    console.log("   ✅ PATCH VERIFIED: Dynamic connection pool configured with resilient ceiling!");
+    passedChecks++;
+  } else {
+    throw new Error(`Expected pool max >= 20, got ${(pool as any).options.max}`);
   }
 
   // -------------------------------------------------------------------------
-  // TEST 5: Idempotency Keys Unbounded Storage Growth
+  // TEST 7: API Key Authentication Middleware
   // -------------------------------------------------------------------------
-  findings.push({
-    title: "Unbounded Storage Growth in idempotency_keys",
-    severity: "MEDIUM",
-    description: "The idempotency_keys table has no TTL (Time-To-Live) or auto-cleanup mechanism. Over time, high-throughput systems will accumulate millions of dead keys.",
-    verified: true,
-  });
+  console.log("\nTest 7: Testing API Key Authentication Middleware...");
+  process.env.BEASTMQ_API_KEY = "super-secret-key-123";
 
-  // -------------------------------------------------------------------------
-  // TEST 6: Connection Pool Sizing vs Concurrency Exhaustion
-  // -------------------------------------------------------------------------
-  findings.push({
-    title: "PostgreSQL Connection Pool Starvation Risk",
-    severity: "MEDIUM",
-    description: "The pg.Pool defaults to max: 10 connections. If multiple worker fibers run concurrent transactions and the HTTP API handles bursts, pool exhaustion causes queuing and cascading timeouts.",
-    verified: true,
+  // Request without key -> 401
+  const unauthRes = await fetch(`${baseUrl}/jobs`);
+  console.log(`   Unauthenticated request status: ${unauthRes.status}`);
+
+  // Request with valid key -> 200
+  const authRes = await fetch(`${baseUrl}/jobs`, {
+    headers: { "x-api-key": "super-secret-key-123" },
   });
+  console.log(`   Authenticated request status: ${authRes.status}`);
+
+  // Reset
+  delete process.env.BEASTMQ_API_KEY;
+
+  if (unauthRes.status === 401 && authRes.status === 200) {
+    console.log("   ✅ PATCH VERIFIED: API Key authentication blocks unauthorized requests and admits valid keys!");
+    passedChecks++;
+  } else {
+    throw new Error(`Auth test failed: unauth=${unauthRes.status}, auth=${authRes.status}`);
+  }
 
   console.log("\n========================================================");
-  console.log(`📊 AUDIT SUMMARY: Found ${findings.length} vulnerabilities/resilience issues`);
-  console.log("========================================================");
-  for (const f of findings) {
-    console.log(`[${f.severity}] ${f.title}`);
-    console.log(`  -> ${f.description}\n`);
-  }
+  console.log(`🎉 ALL ${passedChecks}/7 SECURITY & RESILIENCE PATCHES VERIFIED!`);
+  console.log("========================================================\n");
 
   server.close();
   await pool.end();
   process.exit(0);
 }
 
-runVulnerabilityAudit().catch((err) => {
-  console.error("Audit script failed:", err);
+verifyPatches().catch((err) => {
+  console.error("Verification failed:", err);
   process.exit(1);
 });

@@ -3,10 +3,19 @@ import express from "express";
 import jobsRouter from "./routes/jobs.js";
 import dlqRouter from "./routes/dlq.js";
 import agentRouter from "./routes/agent.js";
+import { authMiddleware } from "./auth.js";
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
+
+// Root health & meta (public)
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "healthy", service: "beastMQ", timestamp: new Date() });
+});
+
+// Authentication middleware for API routes
+app.use(authMiddleware);
 
 // Mount routers
 app.use("/jobs", jobsRouter);
