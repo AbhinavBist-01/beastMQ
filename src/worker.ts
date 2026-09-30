@@ -6,6 +6,17 @@ import crypto from "node:crypto";
 const workerId = crypto.randomUUID();
 
 console.log(`Worker ${workerId} started`);
+let shuttingDown = false;
+
+process.on("SIGINT", () => {
+  console.log("Shutdown signal received...");
+  shuttingDown = true;
+});
+
+process.on("SIGTERM", () => {
+  console.log("Shutdown signal received...");
+  shuttingDown = true;
+});
 
 const CONCURRENCY = 5;
 
@@ -320,8 +331,8 @@ async function startWoker() {
   console.log("Worker started. Listening for jobs...");
 
   const runningJobs = new Set<Promise<void>>();
-  while (true) {
-    while (runningJobs.size < CONCURRENCY) {
+  while (!shuttingDown || runningJobs.size > 0) {
+    while (!shuttingDown && runningJobs.size < CONCURRENCY) {
       const promise = processJobs();
 
       runningJobs.add(promise);
