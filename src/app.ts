@@ -13,6 +13,7 @@ app.post("/jobs", async (req, res) => {
     type: string;
     payload: unknown;
     idempotencyKey?: string;
+    priority?: number;
   };
 
   const [job] = await db
@@ -21,6 +22,7 @@ app.post("/jobs", async (req, res) => {
       type: body.type,
       payload: body.payload,
       idempotencyKey: body.idempotencyKey,
+      priority: body.priority,
     })
     .returning();
 

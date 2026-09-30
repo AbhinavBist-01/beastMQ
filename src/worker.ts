@@ -19,6 +19,8 @@ process.on("SIGTERM", () => {
 });
 
 const CONCURRENCY = 5;
+const MIN_POLL_DELAY = 100;
+const MAX_POLL_DELAY = 5000;
 
 async function claimIdempotencyKey(key: string) {
   const [record] = await db
@@ -155,7 +157,7 @@ async function claimJob() {
           and(eq(jobs.status, "running"), lt(jobs.lockedUntil, now)),
         ),
       )
-      .orderBy(asc(jobs.createdAt), desc(jobs.priority))
+      .orderBy(desc(jobs.priority), asc(jobs.createdAt))
       .limit(1)
       .for("update", { skipLocked: true });
 
@@ -182,11 +184,11 @@ async function claimJob() {
   });
 }
 
-async function processJobs() {
+async function processJobs(): Promise<boolean> {
   const job = await claimJob();
   if (!job) {
     console.log("No jobs available.");
-    return;
+    return false;
   }
 
   console.log(`Processing job with ID: ${job.id}`);
@@ -210,7 +212,7 @@ async function processJobs() {
             updatedAt: new Date(),
           })
           .where(eq(jobs.id, job.id));
-        return;
+        return true;
       }
 
       if (result === "processing") {
@@ -228,7 +230,7 @@ async function processJobs() {
           })
           .where(eq(jobs.id, job.id));
 
-        return;
+        return true;
       }
 
       // If the idempotency key is in a "retry" state, we should retry the job.
@@ -244,7 +246,7 @@ async function processJobs() {
           })
           .where(eq(jobs.id, job.id));
 
-        return;
+        return true;
       }
     }
 
@@ -277,6 +279,7 @@ async function processJobs() {
       })
       .where(eq(jobs.id, job.id));
     console.log(`Job with ID: ${job.id} completed successfully.`);
+    return true;
   } catch (error) {
     const MAX_ATTEMPTS = 5;
 
@@ -320,6 +323,7 @@ async function processJobs() {
 
       console.error(`Job ${job.id} failed. Retrying in ${delay}ms`);
     }
+    return true;
   } finally {
     if (heartbeat) {
       clearInterval(heartbeat);
@@ -327,21 +331,29 @@ async function processJobs() {
   }
 }
 
-async function startWoker() {
-  console.log("Worker started. Listening for jobs...");
-
-  const runningJobs = new Set<Promise<void>>();
-  while (!shuttingDown || runningJobs.size > 0) {
-    while (!shuttingDown && runningJobs.size < CONCURRENCY) {
-      const promise = processJobs();
-
-      runningJobs.add(promise);
-
-      promise.finally(() => {
-        runningJobs.delete(promise);
-      });
+async function runWorker(workerIndex: number) {
+  let pollDelay = MIN_POLL_DELAY;
+  while (!shuttingDown) {
+    try {
+      const didWork = await processJobs();
+      if (didWork) {
+        pollDelay = MIN_POLL_DELAY;
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, pollDelay));
+        pollDelay = Math.min(pollDelay * 2, MAX_POLL_DELAY);
+      }
+    } catch (err) {
+      console.error(`Worker fiber ${workerIndex} encountered an error:`, err);
+      await new Promise((resolve) => setTimeout(resolve, pollDelay));
     }
-    await Promise.race(runningJobs);
   }
+}
+
+async function startWoker() {
+  console.log(`Worker ${workerId} started with concurrency ${CONCURRENCY}. Listening for jobs...`);
+
+  const workers = Array.from({ length: CONCURRENCY }, (_, i) => runWorker(i + 1));
+  await Promise.all(workers);
+  console.log("All workers stopped gracefully.");
 }
 startWoker();
