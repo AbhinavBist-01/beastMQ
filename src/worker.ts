@@ -7,6 +7,8 @@ const workerId = crypto.randomUUID();
 
 console.log(`Worker ${workerId} started`);
 
+const CONCURRENCY = 5;
+
 async function claimIdempotencyKey(key: string) {
   const [record] = await db
     .insert(idempotencyKeys)
@@ -316,10 +318,19 @@ async function processJobs() {
 
 async function startWoker() {
   console.log("Worker started. Listening for jobs...");
-  while (true) {
-    await processJobs();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  const runningJobs = new Set<Promise<void>>();
+  while (true) {
+    while (runningJobs.size < CONCURRENCY) {
+      const promise = processJobs();
+
+      runningJobs.add(promise);
+
+      promise.finally(() => {
+        runningJobs.delete(promise);
+      });
+    }
+    await Promise.race(runningJobs);
   }
 }
 startWoker();
