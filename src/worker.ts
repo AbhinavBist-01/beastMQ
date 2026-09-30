@@ -1,6 +1,6 @@
 import { db } from "./db/index.js";
 import { jobs, deadJobs, idempotencyKeys } from "./db/schema.js";
-import { eq, and, or, lt, lte, sql } from "drizzle-orm";
+import { eq, and, or, lt, lte, sql, asc, desc } from "drizzle-orm";
 import crypto from "node:crypto";
 
 const workerId = crypto.randomUUID();
@@ -144,7 +144,7 @@ async function claimJob() {
           and(eq(jobs.status, "running"), lt(jobs.lockedUntil, now)),
         ),
       )
-      .orderBy(jobs.createdAt)
+      .orderBy(asc(jobs.createdAt), desc(jobs.priority))
       .limit(1)
       .for("update", { skipLocked: true });
 

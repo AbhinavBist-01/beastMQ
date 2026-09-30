@@ -11,6 +11,7 @@ import {
 export const jobs = pgTable("jobs", {
   id: uuid("id").primaryKey().defaultRandom(),
   type: varchar("type", { length: 255 }).notNull(),
+  priority: integer("priority").notNull().default(0),
 
   payload: jsonb("payload").notNull(),
 
@@ -18,11 +19,8 @@ export const jobs = pgTable("jobs", {
   lockedBy: text("locked_by"),
   lockedUntil: timestamp("locked_until"),
   idempotencyKey: text("idempotency_key").unique(),
-
   availableAt: timestamp("available_at").notNull().defaultNow(),
-
   attempts: integer("attempts").notNull().default(0),
-
   createdAt: timestamp("created_at").notNull().defaultNow(),
 
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
