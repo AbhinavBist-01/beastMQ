@@ -44,6 +44,8 @@ Commands:
     --concurrency <number>  Number of concurrent fibers (default: 5)
     --drain                 Process all pending jobs until queue is empty, then exit
 
+  keygen                  Generate a secure API key (pass --save to write to .env)
+
   help                    Show this help message
 `);
 }
@@ -268,6 +270,34 @@ async function main() {
           await runner.start();
         }
         break;
+      }
+
+      case "keygen": {
+        const crypto = await import("node:crypto");
+        const key = `bmq_live_${crypto.randomBytes(24).toString("hex")}`;
+        const saveToEnv = flags.save === "true";
+        if (saveToEnv) {
+          const fs = await import("node:fs");
+          const path = await import("node:path");
+          const envPath = path.resolve(process.cwd(), ".env");
+          let content = "";
+          if (fs.existsSync(envPath)) {
+            content = fs.readFileSync(envPath, "utf-8");
+          }
+          if (content.includes("BEASTMQ_API_KEY=")) {
+            content = content.replace(/BEASTMQ_API_KEY=.*/, `BEASTMQ_API_KEY="${key}"`);
+          } else {
+            content += `\nBEASTMQ_API_KEY="${key}"\n`;
+          }
+          fs.writeFileSync(envPath, content);
+          console.log(`\n🔑 Generated and saved BeastMQ Secret API Key to .env:\n\n  ${key}\n`);
+        } else {
+          console.log(`\n🔑 Generated BeastMQ Secret API Key:\n\n  ${key}\n`);
+          console.log(`To activate, add to your .env file:`);
+          console.log(`  BEASTMQ_API_KEY="${key}"\n`);
+          console.log(`(Tip: pass --save to automatically write it to your .env file)\n`);
+        }
+        process.exit(0);
       }
 
       case "help": {
