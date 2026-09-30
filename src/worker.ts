@@ -8,8 +8,6 @@ const workerId = crypto.randomUUID();
 console.log(`Worker ${workerId} started`);
 
 async function claimIdempotencyKey(key: string) {
-  const now = new Date();
-
   const [record] = await db
     .insert(idempotencyKeys)
     .values({
@@ -62,9 +60,27 @@ async function acquireIdempotencyKey(key: string) {
     return "processing";
   }
 
-  // 5. Lease expired → reclaim
-  // we'll implement this next
-  return "expired";
+  const [reclaimed] = await db
+    .update(idempotencyKeys)
+    .set({
+      lockedBy: workerId,
+      lockedUntil: new Date(Date.now() + 5 * 60 * 1000),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(idempotencyKeys.key, key),
+        eq(idempotencyKeys.status, "processing"),
+        lt(idempotencyKeys.lockedUntil, new Date()),
+      ),
+    )
+    .returning();
+
+  if (reclaimed) {
+    return "acquired";
+  }
+
+  return "processing";
 }
 
 function getRetryDelay(attempt: number) {
@@ -73,8 +89,9 @@ function getRetryDelay(attempt: number) {
   return baseDelay * Math.pow(2, attempt - 1);
 }
 
-function startheartbeat(jobId: string) {
+function startHeartbeat(jobId: string, idempotencyKey?: string | null) {
   const interval = setInterval(async () => {
+    // Extend job lease
     await db
       .update(jobs)
       .set({
@@ -88,8 +105,27 @@ function startheartbeat(jobId: string) {
           eq(jobs.status, "running"),
         ),
       );
+
+    // Extend idempotency lease
+    if (idempotencyKey) {
+      await db
+        .update(idempotencyKeys)
+        .set({
+          lockedUntil: new Date(Date.now() + 5 * 60 * 1000),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(idempotencyKeys.key, idempotencyKey),
+            eq(idempotencyKeys.lockedBy, workerId),
+            eq(idempotencyKeys.status, "processing"),
+          ),
+        );
+    }
+
     console.log(`Heartbeat sent for job ${jobId}`);
-  }, 10000);
+  }, 10_000);
+
   return interval;
 }
 
@@ -142,7 +178,8 @@ async function processJobs() {
 
   console.log(`Processing job with ID: ${job.id}`);
 
-  const heartbeat = startheartbeat(job.id);
+  let heartbeat: NodeJS.Timeout | undefined;
+
   try {
     if (job.idempotencyKey) {
       const result = await acquireIdempotencyKey(job.idempotencyKey);
@@ -181,13 +218,24 @@ async function processJobs() {
         return;
       }
 
-      if (result === "expired") {
-        console.log(`Idempotency lease expired for ${job.idempotencyKey}.`);
+      // If the idempotency key is in a "retry" state, we should retry the job.
+      if (result === "retry") {
+        console.log(`Job ${job.id} needs to be retried.`);
+        await db
+          .update(jobs)
+          .set({
+            status: "pending",
+            lockedBy: null,
+            lockedUntil: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobs.id, job.id));
 
-        // We will implement takeover next.
         return;
       }
     }
+
+    heartbeat = startHeartbeat(job.id, job.idempotencyKey);
     await new Promise((resolve) => setTimeout(resolve, 10_000));
 
     if (job.idempotencyKey) {
@@ -197,7 +245,13 @@ async function processJobs() {
           status: "completed",
           updatedAt: new Date(),
         })
-        .where(eq(idempotencyKeys.key, job.idempotencyKey));
+        .where(
+          and(
+            eq(idempotencyKeys.key, job.idempotencyKey),
+            eq(idempotencyKeys.lockedBy, workerId),
+            eq(idempotencyKeys.status, "processing"),
+          ),
+        );
     }
 
     await db
@@ -254,7 +308,9 @@ async function processJobs() {
       console.error(`Job ${job.id} failed. Retrying in ${delay}ms`);
     }
   } finally {
-    clearInterval(heartbeat);
+    if (heartbeat) {
+      clearInterval(heartbeat);
+    }
   }
 }
 
