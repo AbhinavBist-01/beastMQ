@@ -1,15 +1,21 @@
 {
   "name": "beastMQ",
   "version": "1.0.0",
-  "description": "",
-  "main": "dist/server.js",
+  "description": "PostgreSQL-backed distributed job queue and agentic task orchestration engine",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "beastmq": "./dist/cli/index.js"
+  },
   "type": "module",
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "worker": "tsx src/worker.ts",
+    "cli": "tsx src/cli/index.ts",
     "test": "tsx tests/run_tests.ts",
+    "test:agent": "tsx tests/test_agent_layer.ts",
     "db:generate": "npx drizzle-kit generate",
     "db:migrate": "npx drizzle-kit migrate",
     "db:push": "npx drizzle-kit push"

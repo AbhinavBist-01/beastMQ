@@ -23,6 +23,12 @@ export const jobs = pgTable("jobs", {
   attempts: integer("attempts").notNull().default(0),
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
+  // Agentic Context & Execution
+  traceId: text("trace_id"),
+  parentJobId: uuid("parent_job_id"),
+  agentRole: text("agent_role"),
+  result: jsonb("result"),
+
   lastError: text("last_error"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 
