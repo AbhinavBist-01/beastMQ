@@ -116,50 +116,49 @@ flowchart TD
 
 ### 1. Install as an Agent Skill (`npx skills`)
 
-beastMQ implements the open **`skills.sh`** / **`agentskills.io`** specification. You can install it directly into **Claude Code, Cursor, Windsurf, Antigravity, or Copilot**:
+beastMQ implements the open **`skills.sh`** standard. When a user installs the skill, their AI Agent (Claude Code, Cursor, Windsurf, Antigravity, GitHub Copilot) **automatically uses beastMQ behind the scenes** to offload long-running operations, manage queues, run workers, and prevent turn timeouts—without requiring the human user to manually start servers or configure queues:
 
 ```bash
 # Install via skills.sh ecosystem
 npx skills add <github-user>/beastmq
 
-# Or install locally from your clone
+# Or install locally from your cloned repository
 npx skills add .
 ```
 
-_The skill runbook is located in [`skills/beastmq/SKILL.md`](file:///C:/Users/abhin/OneDrive/Desktop/Explore/beastMQ/skills/beastmq/SKILL.md) and [`SKILL.md`](file:///C:/Users/abhin/OneDrive/Desktop/Explore/beastMQ/SKILL.md)._
+*The skill instructions for AI Agents are located in [`skills/beastmq/SKILL.md`](file:///C:/Users/abhin/OneDrive/Desktop/Explore/beastMQ/skills/beastmq/SKILL.md) and [`SKILL.md`](file:///C:/Users/abhin/OneDrive/Desktop/Explore/beastMQ/SKILL.md).*
 
 ---
 
-### 2. Terminal CLI (`npx beastmq`)
+### 2. Autonomous Agent Execution & Terminal CLI (`npx beastmq`)
 
-Agents with shell/bash execution permissions can invoke `npx beastmq` without writing boilerplate:
+AI agents can execute tasks **behind the hood** using direct database access or HTTP with zero extra server setup:
 
 ```bash
-# Enqueue a heavy research task
-npx beastmq enqueue \
-  --type "agent.research" \
-  --payload '{"topic": "Postgres SKIP LOCKED queue performance"}' \
-  --role "researcher" \
-  --trace-id "session_401" \
-  --priority 10
+# 1. Offload a long-running shell command (built-in agent.command handler)
+npx beastmq enqueue --cmd "node scripts/process_large_dataset.js" --role "data_agent" --priority 10
 
-# Spawn a child subtask linked to a parent
+# 2. Offload a background HTTP fetch or webhook (built-in agent.http handler)
+npx beastmq enqueue --url "https://api.github.com/zen" --role "api_agent"
+
+# 3. Spawn a child subtask linked to a parent job (subagent hierarchy)
 npx beastmq enqueue \
   --type "agent.summarize" \
   --payload '{"documentId": "doc_99"}' \
   --parent-id "7b520d8e-88d5-44e3-9d30-09b128f3d96a" \
   --role "summarizer"
 
-# Wait for completion and print the structured JSON result
+# 4. Drain all pending jobs in a single pass (exits cleanly after processing)
+npx beastmq worker --drain
+
+# 5. Wait for completion and print the structured JSON result
 npx beastmq wait 7b520d8e-88d5-44e3-9d30-09b128f3d96a --timeout 30000
 
-# Check job status and result
+# 6. Check job status and result
 npx beastmq status 7b520d8e-88d5-44e3-9d30-09b128f3d96a
 
-# Inspect Dead Letter Queue (DLQ)
+# 7. Inspect & Replay Dead Letter Queue (DLQ)
 npx beastmq dlq list
-
-# Replay a failed job
 npx beastmq dlq replay 4b2c394f-61aa-402f-82c7-8f587482e27b
 ```
 

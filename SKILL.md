@@ -1,92 +1,114 @@
 ---
 name: beastmq
 description: >-
-  Asynchronous background task queue, agentic workflow orchestration, and worker execution engine backed by PostgreSQL.
-  Use this skill when an AI agent needs to offload long-running operations, coordinate subagent tasks, prevent timeouts,
-  ensure distributed idempotency, or inspect and recover failed queue tasks.
+  PostgreSQL-backed distributed job queue, agentic task orchestration, and background worker engine.
+  Use this skill autonomously under the hood whenever a user request requires asynchronous processing,
+  long-running shell commands, background HTTP scraping/webhooks, subagent task fan-out,
+  or queue inspection and dead-letter recovery without blocking turns or requiring human devops setup.
 license: ISC
 version: 1.0.0
 ---
 
-# beastMQ: Agentic Task Queue & Execution Skill
+# BeastMQ: Agent-Native Task Queue & Execution Skill
 
-`beastMQ` is a production-grade, distributed message queue and agentic task orchestration engine backed by PostgreSQL row-level locks (`FOR UPDATE SKIP LOCKED`). It gives AI agents a persistent, ACID-durable asynchronous layer to delegate heavy computations, schedule background subagents, guarantee idempotency, and wait for structured results without blocking agent turns.
+You are an AI Agent with autonomous access to **BeastMQ**, an industrial-strength background task engine backed by PostgreSQL `FOR UPDATE SKIP LOCKED`.
+
+## 🤖 YOUR AUTONOMOUS ROLE ("Behind the Hood")
+
+When a user asks you to perform tasks that:
+1. **Take significant time** (> 5-10 seconds: heavy scripts, batch processing, long-running builds, benchmarks).
+2. **Execute multiple subagent steps** (fan-out crawling, map-reduce summarization, batch ETL).
+3. **Run background commands or HTTP queries** while keeping the workspace responsive and unblocked.
+4. **Require guaranteed retry resilience** or idempotency (preventing double charges or duplicates).
+
+**DO NOT:**
+- Hang or block user turns running slow commands in the foreground.
+- Ask the user to manually configure queues, start servers, or manage workers.
+
+**DO:**
+- Use BeastMQ **under the hood** to enqueue the task, process it using the worker, and return clean results to the user.
+- BeastMQ operates directly against PostgreSQL — **no external HTTP server is required** to be started.
 
 ---
 
-## 🧭 When to Use This Skill
+## 🛠️ CLI Tools & Execution Reference
 
-Activate this skill when:
-- **Offloading Long Operations**: An agent needs to trigger a long-running computation (data scraping, model training, video processing, bulk API calls) that would otherwise exceed tool/turn timeouts.
-- **Subagent Delegation**: A primary agent needs to spawn one or more asynchronous child subtasks (`parentJobId`, `traceId`, `agentRole`) and collect results asynchronously.
-- **Distributed Idempotency**: An agent must ensure an operation (such as payment processing, database migrations, or email delivery) is executed at most once despite retries.
-- **Fault Recovery**: Inspecting failed jobs in the Dead Letter Queue (DLQ) and replaying them after debugging.
+You can invoke BeastMQ via `npx beastmq` (or `node node_modules/beastmq/dist/cli/index.js`):
 
----
-
-## ⚡ Quickstart Commands (CLI)
-
-Agents with shell/terminal execution capabilities can directly run `npx beastmq`:
-
-### 1. Enqueue an Agent Task
+### 1. Offload Shell / System Commands
+Run any shell command asynchronously through the queue with full timeout protection, process abort signals, and result capture:
 ```bash
-npx beastmq enqueue \
-  --type "agent.data_analysis" \
-  --payload '{"datasetId": "ds_102", "metrics": ["mean", "variance"]}' \
-  --priority 10 \
-  --role "data_analyst" \
-  --trace-id "session_881"
+npx beastmq enqueue --cmd "<command_to_run>" [--role "<agentRole>"] [--priority <number>]
 ```
-**Output:**
+*Example:*
+```bash
+npx beastmq enqueue --cmd "node scripts/process_data.js" --role "data_agent" --priority 10
+```
+Returns:
 ```json
 {
-  "id": "7b520d8e-88d5-44e3-9d30-09b128f3d96a",
+  "id": "2d3c9b23-a599-4f9f-9382-47a6cb590983",
   "status": "pending"
 }
 ```
 
-### 2. Spawn a Subagent Task (Parent-Child)
+### 2. Offload Background HTTP / API Calls
+Scrape a URL or trigger an API webhook in the background:
+```bash
+npx beastmq enqueue --url "<url>" [--method GET|POST] [--role "<agentRole>"]
+```
+*Example:*
+```bash
+npx beastmq enqueue --url "https://api.github.com/zen" --role "api_agent"
+```
+
+### 3. Enqueue Subagent Tasks (Parent-Child Hierarchy)
+Coordinate subagents by linking tasks with `--parent-id` and `--trace-id`:
 ```bash
 npx beastmq enqueue \
-  --type "agent.summarize" \
-  --payload '{"chunkIndex": 1}' \
-  --parent-id "7b520d8e-88d5-44e3-9d30-09b128f3d96a" \
-  --role "summarizer_subagent"
+  --type "agent.subtask" \
+  --payload '{"chunk": 2, "query": "summarize"}' \
+  --parent-id "2d3c9b23-a599-4f9f-9382-47a6cb590983" \
+  --role "summarizer_subagent" \
+  --trace-id "session_44"
 ```
 
-### 3. Wait for Task Result
-```bash
-npx beastmq wait 7b520d8e-88d5-44e3-9d30-09b128f3d96a --timeout 30000
-```
-**Output:**
-```json
-{
-  "id": "7b520d8e-88d5-44e3-9d30-09b128f3d96a",
-  "status": "completed",
-  "result": {
-    "summary": "Processed 10,000 rows successfully.",
-    "insights": ["Anomaly detected in column B"]
-  }
-}
-```
+### 4. Process Tasks with the Worker
+- **One-Shot Execution (Drain Mode)**:
+  Processes all queued jobs until the queue is completely drained, then exits cleanly (ideal for running in a tool call):
+  ```bash
+  npx beastmq worker --drain
+  ```
+- **Daemon Mode (Background Worker)**:
+  Launches a persistent background worker with configurable concurrency:
+  ```bash
+  npx beastmq worker --concurrency 5
+  ```
 
-### 4. Check Task Status
-```bash
-npx beastmq status 7b520d8e-88d5-44e3-9d30-09b128f3d96a
-```
+### 5. Inspect Results & Monitor Progress
+- **Wait for Completion**:
+  ```bash
+  npx beastmq wait <jobId> --timeout 30000
+  ```
+- **Check Status & Output**:
+  ```bash
+  npx beastmq status <jobId>
+  ```
+  Returns status, timings, attempts, and the structured `result` payload (stdout, stderr, exit code, duration).
 
-### 5. Inspect & Replay Dead Letter Queue (DLQ)
-```bash
-# List permanently failed tasks
-npx beastmq dlq list
-
-# Replay a failed dead job back into pending state
-npx beastmq dlq replay 4b2c394f-61aa-402f-82c7-8f587482e27b
-```
+### 6. Inspect & Recover Dead-Letter Queue (DLQ)
+- **List failed tasks**:
+  ```bash
+  npx beastmq dlq list
+  ```
+- **Replay failed task**:
+  ```bash
+  npx beastmq dlq replay <deadJobId>
+  ```
 
 ---
 
-## 💻 Programmatic Agent SDK (TypeScript)
+## 💻 Programmatic Agent SDK (TypeScript / Node.js)
 
 If writing code inside the application:
 
@@ -97,8 +119,8 @@ const client = new BeastMQClient();
 
 // 1. Register an Agent Task Handler
 taskRegistry.register("agent.web_research", async (payload: { url: string }, context) => {
-  // context contains: jobId, traceId, parentJobId, agentRole, attempts
-  const pageData = await fetch(payload.url).then(r => r.text());
+  // context contains: jobId, traceId, parentJobId, agentRole, attempts, signal
+  const pageData = await fetch(payload.url, { signal: context.signal }).then((r) => r.text());
   return { length: pageData.length, fetchedAt: new Date().toISOString() };
 });
 
@@ -118,8 +140,18 @@ console.log("Result:", completed.result);
 
 ---
 
-## 🔄 Core Agentic Patterns
+## ⚡ The Behind-the-Hood Workflow
 
-For advanced subagent fan-out patterns and failure recovery protocols, refer to:
+When executing user requests:
+1. **Analyze**: Break down the user's workload into BeastMQ tasks.
+2. **Enqueue**: Run `npx beastmq enqueue ...` to create the jobs.
+3. **Execute**: Run `npx beastmq worker --drain` to process the jobs (or let the background worker handle it).
+4. **Inspect**: Run `npx beastmq status <jobId>` to fetch output (`result`).
+5. **Synthesize**: Format and present the final answer clearly to the human user without devops noise.
+
+---
+
+## 🔄 Core Agentic Patterns & References
+
 - [API & Schema Reference](./skills/beastmq/references/api.md)
 - [Agentic Workflow Patterns](./skills/beastmq/references/agentic_patterns.md)

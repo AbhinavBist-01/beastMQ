@@ -52,12 +52,21 @@ function parseArgs(args: string[]): { command: string; subCommand?: string | und
     const arg = args[i]!;
     if (arg.startsWith("--")) {
       const key = arg.slice(2);
-      const next = args[i + 1];
-      if (next && !next.startsWith("--")) {
-        flags[key] = next;
-        i++;
+      if (key === "payload" || key === "data" || key === "cmd" || key === "command") {
+        const parts: string[] = [];
+        while (i + 1 < args.length && !args[i + 1]!.startsWith("--")) {
+          parts.push(args[i + 1]!);
+          i++;
+        }
+        flags[key] = parts.join(" ");
       } else {
-        flags[key] = "true";
+        const next = args[i + 1];
+        if (next && !next.startsWith("--")) {
+          flags[key] = next;
+          i++;
+        } else {
+          flags[key] = "true";
+        }
       }
     } else {
       if (!command) {
@@ -85,10 +94,30 @@ async function main() {
   try {
     switch (command) {
       case "enqueue": {
-        const type = flags.type;
-        const payloadRaw = flags.payload;
+        let type = flags.type;
+        let payloadRaw = flags.payload || flags.data;
+
+        if (!type && (flags.cmd || flags.command)) {
+          type = "agent.command";
+        }
+        if (!type && flags.url) {
+          type = "agent.http";
+        }
+        if (!payloadRaw && (flags.cmd || flags.command)) {
+          payloadRaw = JSON.stringify({
+            command: flags.cmd || flags.command,
+            cwd: flags.cwd,
+          });
+        }
+        if (!payloadRaw && flags.url) {
+          payloadRaw = JSON.stringify({
+            url: flags.url,
+            method: flags.method ?? "GET",
+          });
+        }
+
         if (!type || !payloadRaw) {
-          console.error("Error: --type and --payload are required for enqueue.");
+          console.error("Error: --type and --payload (or --cmd / --url) are required for enqueue.");
           process.exit(1);
         }
 
@@ -116,7 +145,7 @@ async function main() {
         });
 
         console.log(JSON.stringify(res, null, 2));
-        break;
+        process.exit(0);
       }
 
       case "status": {
@@ -133,7 +162,7 @@ async function main() {
         }
 
         console.log(JSON.stringify(job, null, 2));
-        break;
+        process.exit(0);
       }
 
       case "wait": {
@@ -149,7 +178,7 @@ async function main() {
         console.log(`Waiting for job ${id}...`);
         const job = await client.waitForJob(id, { timeoutMs, pollIntervalMs });
         console.log(JSON.stringify({ id: job.id, status: job.status, result: job.result }, null, 2));
-        break;
+        process.exit(0);
       }
 
       case "list": {
@@ -158,13 +187,14 @@ async function main() {
 
         const jobs = await client.listJobs({ status, limit });
         console.log(JSON.stringify(jobs, null, 2));
-        break;
+        process.exit(0);
       }
 
       case "dlq": {
         if (subCommand === "list" || !subCommand) {
           const deadList = await client.listDeadJobs();
           console.log(JSON.stringify(deadList, null, 2));
+          process.exit(0);
         } else if (subCommand === "replay") {
           const id = positional[0];
           if (!id) {
@@ -173,6 +203,7 @@ async function main() {
           }
           const res = await client.replayDeadJob(id);
           console.log(JSON.stringify(res, null, 2));
+          process.exit(0);
         } else {
           console.error(`Unknown DLQ command: ${subCommand}`);
           process.exit(1);
@@ -188,6 +219,7 @@ async function main() {
         if (isDrain) {
           const count = await runner.drain();
           console.log(JSON.stringify({ status: "drained", processedCount: count }));
+          process.exit(0);
         } else {
           await runner.start();
         }
@@ -196,7 +228,7 @@ async function main() {
 
       case "help": {
         printHelp();
-        break;
+        process.exit(0);
       }
 
       default:
