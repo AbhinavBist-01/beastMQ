@@ -21,6 +21,7 @@ process.on("SIGTERM", () => {
 const CONCURRENCY = 5;
 const MIN_POLL_DELAY = 100;
 const MAX_POLL_DELAY = 5000;
+const JOB_TIMEOUT = 30_000;
 
 async function claimIdempotencyKey(key: string) {
   const [record] = await db
@@ -251,7 +252,17 @@ async function processJobs(): Promise<boolean> {
     }
 
     heartbeat = startHeartbeat(job.id, job.idempotencyKey);
-    await new Promise((resolve) => setTimeout(resolve, 10_000));
+
+    await Promise.race([
+      new Promise((resolve) => setTimeout(resolve, 10_000)),
+
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Job execution timeout")),
+          JOB_TIMEOUT,
+        ),
+      ),
+    ]);
 
     if (job.idempotencyKey) {
       await db
@@ -350,9 +361,13 @@ async function runWorker(workerIndex: number) {
 }
 
 async function startWoker() {
-  console.log(`Worker ${workerId} started with concurrency ${CONCURRENCY}. Listening for jobs...`);
+  console.log(
+    `Worker ${workerId} started with concurrency ${CONCURRENCY}. Listening for jobs...`,
+  );
 
-  const workers = Array.from({ length: CONCURRENCY }, (_, i) => runWorker(i + 1));
+  const workers = Array.from({ length: CONCURRENCY }, (_, i) =>
+    runWorker(i + 1),
+  );
   await Promise.all(workers);
   console.log("All workers stopped gracefully.");
 }
