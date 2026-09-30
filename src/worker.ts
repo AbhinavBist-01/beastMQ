@@ -175,6 +175,7 @@ async function claimJob() {
 
         lockedBy: workerId,
         lockedUntil,
+        startedAt: new Date(),
 
         updatedAt: new Date(),
       })
@@ -208,6 +209,7 @@ async function processJobs(): Promise<boolean> {
           .update(jobs)
           .set({
             status: "completed",
+            completedAt: new Date(),
             lockedBy: null,
             lockedUntil: null,
             updatedAt: new Date(),
@@ -284,6 +286,7 @@ async function processJobs(): Promise<boolean> {
       .update(jobs)
       .set({
         status: "completed",
+        completedAt: new Date(),
         lockedBy: null,
         lockedUntil: null,
         updatedAt: new Date(),
@@ -293,6 +296,7 @@ async function processJobs(): Promise<boolean> {
     return true;
   } catch (error) {
     const MAX_ATTEMPTS = 5;
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
     if (job.attempts >= MAX_ATTEMPTS) {
       await db.insert(deadJobs).values({
@@ -300,13 +304,14 @@ async function processJobs(): Promise<boolean> {
         type: job.type,
         payload: job.payload,
         attempts: job.attempts,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
       });
 
       await db
         .update(jobs)
         .set({
           status: "dead",
+          lastError: errorMessage,
           lockedBy: null,
           lockedUntil: null,
           updatedAt: new Date(),
@@ -326,6 +331,7 @@ async function processJobs(): Promise<boolean> {
         .set({
           status: "pending",
           availableAt,
+          lastError: errorMessage,
           lockedBy: null,
           lockedUntil: null,
           updatedAt: new Date(),

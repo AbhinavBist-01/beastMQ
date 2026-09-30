@@ -21,6 +21,9 @@ export const jobs = pgTable("jobs", {
   idempotencyKey: text("idempotency_key").unique(),
   availableAt: timestamp("available_at").notNull().defaultNow(),
   attempts: integer("attempts").notNull().default(0),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  lastError: text("last_error"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
