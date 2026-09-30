@@ -6,6 +6,8 @@ export async function executeJob(
   job: JobRecord,
   jobTimeoutMs: number = 30_000,
 ): Promise<unknown> {
+  const controller = new AbortController();
+
   const context: AgentTaskContext = {
     jobId: job.id,
     type: job.type,
@@ -14,6 +16,7 @@ export async function executeJob(
     agentRole: job.agentRole,
     attempts: job.attempts,
     startedAt: job.startedAt,
+    signal: controller.signal,
   };
 
   const handler = taskRegistry.get(job.type);
@@ -37,18 +40,32 @@ export async function executeJob(
 
     const duration = payload?.durationMs ?? 1000;
     if (duration > 0) {
-      await new Promise((resolve) => setTimeout(resolve, duration));
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(resolve, duration);
+        controller.signal.addEventListener("abort", () => {
+          clearTimeout(timer);
+          reject(controller.signal.reason);
+        }, { once: true });
+      });
     }
 
     return payload?.echo ?? { executedAt: new Date().toISOString(), durationMs: duration };
   })();
 
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(
-      () => reject(new Error("Job execution timeout")),
-      jobTimeoutMs,
-    ),
-  );
+  let timeoutTimer: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutTimer = setTimeout(() => {
+      const timeoutError = new Error("Job execution timeout");
+      controller.abort(timeoutError);
+      reject(timeoutError);
+    }, jobTimeoutMs);
+  });
 
-  return await Promise.race([executionPromise, timeoutPromise]);
+  try {
+    return await Promise.race([executionPromise, timeoutPromise]);
+  } finally {
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer);
+    }
+  }
 }

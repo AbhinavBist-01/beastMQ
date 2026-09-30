@@ -6,6 +6,7 @@ export interface AgentTaskContext {
   agentRole?: string | null;
   attempts: number;
   startedAt?: Date | null;
+  signal: AbortSignal;
 }
 
 export type AgentTaskHandler<TInput = any, TOutput = any> = (
