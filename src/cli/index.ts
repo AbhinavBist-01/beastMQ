@@ -187,6 +187,11 @@ async function main() {
         break;
       }
 
+      case "help": {
+        printHelp();
+        break;
+      }
+
       default:
         console.error(`Unknown command: ${command}`);
         printHelp();
