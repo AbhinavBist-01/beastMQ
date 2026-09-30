@@ -36,6 +36,7 @@ Commands:
 
   worker                  Start a background worker process
     --concurrency <number>  Number of concurrent fibers (default: 5)
+    --drain                 Process all pending jobs until queue is empty, then exit
 
   help                    Show this help message
 `);
@@ -181,9 +182,15 @@ async function main() {
 
       case "worker": {
         const concurrency = flags.concurrency ? parseInt(flags.concurrency, 10) : undefined;
+        const isDrain = flags.drain === "true" || flags.once === "true";
         const { WorkerRunner } = await import("../worker/runner.js");
         const runner = new WorkerRunner({ concurrency });
-        await runner.start();
+        if (isDrain) {
+          const count = await runner.drain();
+          console.log(JSON.stringify({ status: "drained", processedCount: count }));
+        } else {
+          await runner.start();
+        }
         break;
       }
 

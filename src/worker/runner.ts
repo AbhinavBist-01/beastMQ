@@ -139,6 +139,19 @@ export class WorkerRunner {
     }
   }
 
+  async drain(): Promise<number> {
+    let processedCount = 0;
+    while (!isShuttingDown()) {
+      const didWork = await this.processSingleJob();
+      if (didWork) {
+        processedCount++;
+      } else {
+        break;
+      }
+    }
+    return processedCount;
+  }
+
   async start(): Promise<void> {
     console.log(
       `Worker ${this.workerId} started with concurrency ${this.concurrency}. Listening for jobs...`,

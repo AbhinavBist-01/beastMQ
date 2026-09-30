@@ -71,13 +71,17 @@ async function main() {
     // STEP 4: Process jobs via WorkerRunner
     // -------------------------------------------------------------------
     const worker = new WorkerRunner({ concurrency: 1, minPollDelayMs: 50 });
-    // Process parent
-    const didParent = await worker.processSingleJob();
-    console.log(`4. Worker processed parent job: ${didParent}`);
-
-    // Process child
-    const didChild = await worker.processSingleJob();
-    console.log(`5. Worker processed child job: ${didChild}`);
+    let attempts = 0;
+    while (attempts < 10) {
+      attempts++;
+      const p = await client.getJob(parent.id);
+      const c = await client.getJob(child.id);
+      if (p?.status === "completed" && c?.status === "completed") {
+        break;
+      }
+      await worker.processSingleJob();
+      await new Promise((r) => setTimeout(r, 50));
+    }
 
     // -------------------------------------------------------------------
     // STEP 5: Verify results and agent context

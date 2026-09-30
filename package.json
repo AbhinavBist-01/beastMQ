@@ -16,6 +16,7 @@
     "cli": "tsx src/cli/index.ts",
     "test": "tsx tests/run_tests.ts",
     "test:agent": "tsx tests/test_agent_layer.ts",
+    "test:audit": "tsx tests/test_vulnerabilities.ts",
     "db:generate": "npx drizzle-kit generate",
     "db:migrate": "npx drizzle-kit migrate",
     "db:push": "npx drizzle-kit push"
