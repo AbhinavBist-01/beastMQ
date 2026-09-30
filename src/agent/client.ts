@@ -259,6 +259,69 @@ export class BeastMQClient {
   }
 
   /**
+   * Retrieves all jobs belonging to an agent trace session.
+   */
+  async getTrace(traceId: string): Promise<JobRecord[]> {
+    if (this.preferDirect) {
+      try {
+        return await this.getTraceDirect(traceId);
+      } catch {
+        // Fall back to HTTP
+      }
+    }
+
+    try {
+      const res = await fetch(`${this.baseUrl}/agent/traces/${traceId}`, {
+        headers: this.getHeaders(),
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch trace ${traceId} (${res.status})`);
+      }
+      return (await res.json()) as JobRecord[];
+    } catch (err: any) {
+      if (this.isNetworkError(err)) {
+        return await this.getTraceDirect(traceId);
+      }
+      throw err;
+    }
+  }
+
+  private async getTraceDirect(traceId: string): Promise<JobRecord[]> {
+    return (await db.select().from(jobs).where(eq(jobs.traceId, traceId)).orderBy(desc(jobs.createdAt))) as JobRecord[];
+  }
+
+  /**
+   * Waits for all child subtasks of a parent job to complete.
+   */
+  async waitForSubtasks(
+    parentJobId: string,
+    options?: WaitForJobOptions,
+  ): Promise<{ subtasks: JobRecord[]; allCompleted: boolean }> {
+    const timeoutMs = options?.timeoutMs ?? 60_000;
+    const pollIntervalMs = options?.pollIntervalMs ?? 500;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      const subtasks = await this.getSubtasks(parentJobId);
+      if (subtasks.length > 0) {
+        const allFinished = subtasks.every(
+          (t) => t.status === "completed" || t.status === "dead",
+        );
+        if (allFinished) {
+          return { subtasks, allCompleted: true };
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
+    const subtasks = await this.getSubtasks(parentJobId);
+    return {
+      subtasks,
+      allCompleted: subtasks.length > 0 && subtasks.every((t) => t.status === "completed" || t.status === "dead"),
+    };
+  }
+
+  /**
    * Retrieves Dead Letter Queue (DLQ) records.
    */
   async listDeadJobs(): Promise<DeadJobRecord[]> {

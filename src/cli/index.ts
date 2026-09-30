@@ -31,6 +31,12 @@ Commands:
     --status <status>       Filter by status (pending|running|completed|dead)
     --limit <number>        Limit count (default: 20)
 
+  subtasks <parentId>     List all child subtasks spawned by a parent job
+  wait-subtasks <parentId> Wait until all child subtasks complete
+    --timeout <ms>          Max wait time (default: 60000ms)
+
+  trace <traceId>         List all jobs belonging to an agent trace session
+
   dlq list                List dead letter queue jobs
   dlq replay <deadJobId>  Replay a dead job back to pending status
 
@@ -186,6 +192,44 @@ async function main() {
         const limit = flags.limit ? parseInt(flags.limit, 10) : 20;
 
         const jobs = await client.listJobs({ status, limit });
+        console.log(JSON.stringify(jobs, null, 2));
+        process.exit(0);
+      }
+
+      case "subtasks": {
+        const parentId = positional[0];
+        if (!parentId) {
+          console.error("Error: parentId is required. Usage: npx beastmq subtasks <parentId>");
+          process.exit(1);
+        }
+
+        const subtasks = await client.getSubtasks(parentId);
+        console.log(JSON.stringify(subtasks, null, 2));
+        process.exit(0);
+      }
+
+      case "wait-subtasks": {
+        const parentId = positional[0];
+        if (!parentId) {
+          console.error("Error: parentId is required. Usage: npx beastmq wait-subtasks <parentId>");
+          process.exit(1);
+        }
+
+        const timeoutMs = flags.timeout ? parseInt(flags.timeout, 10) : 60_000;
+        console.log(`Waiting for subtasks of ${parentId}...`);
+        const result = await client.waitForSubtasks(parentId, { timeoutMs });
+        console.log(JSON.stringify(result, null, 2));
+        process.exit(0);
+      }
+
+      case "trace": {
+        const traceId = positional[0];
+        if (!traceId) {
+          console.error("Error: traceId is required. Usage: npx beastmq trace <traceId>");
+          process.exit(1);
+        }
+
+        const jobs = await client.getTrace(traceId);
         console.log(JSON.stringify(jobs, null, 2));
         process.exit(0);
       }
