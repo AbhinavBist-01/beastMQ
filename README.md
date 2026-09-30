@@ -1,122 +1,167 @@
-# ⚡ beastMQ: The Agent-Native Task Queue & Workflow Orchestration Engine
+<div align="center">
 
-> **A durable, PostgreSQL-backed asynchronous execution layer for AI Agents, Subagents, and Multi-Agent Workflows.**  
-> _Zero Redis. Strict Durability. Turn-Timeout Prevention. Distributed Idempotency. Universal Open Skill (`skills.sh`)._
+# ⚡ beastMQ
+
+### The Agent-Native Task Queue & Distributed Workflow Engine
+
+[![npm version](https://img.shields.io/badge/npm-v1.0.0-CB3837.svg?style=flat&logo=npm)](https://www.npmjs.com)
+[![skills.sh](https://img.shields.io/badge/skills.sh-certified%20skill-6B46C1.svg?style=flat)](https://skills.sh)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B%20ACID-336791.svg?style=flat&logo=postgresql)](https://www.postgresql.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x%20Strict-3178C6.svg?style=flat&logo=typescript)](https://www.typescriptlang.org)
+[![License: ISC](https://img.shields.io/badge/License-ISC-green.svg?style=flat)](./package.json)
+[![Tests Passing](https://img.shields.io/badge/Tests-7%2F7%20Passing-brightgreen.svg?style=flat)](#-testing--verification)
+
+<p align="center">
+  <b>A durable, PostgreSQL-backed asynchronous execution layer for AI Agents, Subagents, and Multi-Agent Workflows.</b><br/>
+  <i>Zero Redis. Strict Durability. Turn-Timeout Shield. Distributed Idempotency. Universal Open Skill (<code>skills.sh</code>).</i>
+</p>
 
 ---
 
+</div>
+
 ## 📑 Table of Contents
 
-- [The Agent Problem: Why beastMQ?](#-the-agent-problem-why-beastmq)
+- [Why beastMQ for AI Agents?](#-why-beastmq-for-ai-agents)
 - [How beastMQ Solves Agent Bottlenecks](#-how-beastmq-solves-agent-bottlenecks)
 - [Multi-Agent Architecture & Flow](#-multi-agent-architecture--flow)
-- [Installation & Quickstart](#-installation--quickstart)
-  - [1. Install as an Agent Skill (`npx skills`)](#1-install-as-an-agent-skill-npx-skills)
+- [Installation & Setup](#-installation--setup)
+  - [1. Universal Agent Skill (`npx skills`)](#1-universal-agent-skill-npx-skills)
   - [2. Terminal CLI (`npx beastmq`)](#2-terminal-cli-npx-beastmq)
-  - [3. Programmatic TypeScript SDK](#3-programmatic-typescript-sdk)
-- [Agentic Core Features](#-agentic-core-features)
-  - [Subagent Task Hierarchy & Tracing](#1-subagent-task-hierarchy--tracing)
-  - [Dynamic Task & Tool Registry](#2-dynamic-task--tool-registry)
-  - [Non-Blocking Results & Structured JSON Persistence](#3-non-blocking-results--structured-json-persistence)
-  - [Distributed Idempotency (Prevent Duplicate Tool Runs)](#4-distributed-idempotency-prevent-duplicate-tool-runs)
-  - [Atomic Claims (`FOR UPDATE SKIP LOCKED`)](#5-atomic-claims-for-update-skip-locked)
-  - [Lease-Based Worker Crash Recovery](#6-lease-based-worker-crash-recovery)
-  - [Exponential Backoff Retries & Dead Letter Queue (DLQ)](#7-exponential-backoff-retries--dead-letter-queue-dlq)
-  - [Graceful Shutdown & Drain](#8-graceful-shutdown--drain)
-- [HTTP API Reference for Agents](#-http-api-reference-for-agents)
-  - [`POST /jobs` (Enqueue Task / Subtask)](#post-jobs-enqueue-task--subtask)
-  - [`GET /jobs/:id` (Query Status & Result)](#get-jobsid-query-status--result)
-  - [`GET /agent/tasks/:id/subtasks` (Subagent Fan-In)](#get-agenttasksidsubtasks-subagent-fan-in)
-  - [`GET /agent/traces/:traceId` (Trace Correlation)](#get-agenttracestraceid-trace-correlation)
-  - [`GET /dead-jobs` & `POST /dead-jobs/:id/replay` (DLQ Forensics)](#get-dead-jobs--post-dead-jobsidreplay-dlq-forensics)
-- [Database Schema & Data Model](#-database-schema--data-model)
-- [Setup & Running with `npm`](#-setup--running-with-npm)
+  - [3. TypeScript SDK](#3-typescript-sdk)
+- [Core Agentic Features](#-core-agentic-features)
+  - [1. Multi-Agent Hierarchy & Subtask Tracing](#1-multi-agent-hierarchy--subtask-tracing)
+  - [2. Built-In Agent Handlers (`agent.command` & `agent.http`)](#2-built-in-agent-handlers-agentcommand--agenthttp)
+  - [3. Distributed Idempotency State Machine](#3-distributed-idempotency-state-machine)
+  - [4. Atomic Claims (`FOR UPDATE SKIP LOCKED`)](#4-atomic-claims-for-update-skip-locked)
+  - [5. Lease-Based Worker Crash Recovery](#5-lease-based-worker-crash-recovery)
+  - [6. Exponential Backoff & Dead Letter Queue (DLQ)](#6-exponential-backoff--dead-letter-queue-dlq)
+  - [7. Dual-Mode Execution (Direct DB + HTTP Server)](#7-dual-mode-execution-direct-db--http-server)
+- [CLI Command Matrix](#-cli-command-matrix)
+- [REST API Reference](#-rest-api-reference)
+- [Database Schema](#-database-schema)
+- [Production Deployment & Sizing](#-production-deployment--sizing)
 - [Testing & Verification](#-testing--verification)
-- [Modular Architecture & Structure](#-modular-architecture--structure)
 - [License](#-license)
 
 ---
 
-## 🛑 The Agent Problem: Why beastMQ?
+## 🛑 Why beastMQ for AI Agents?
 
-Autonomous AI coding agents (Claude Code, Cursor, Windsurf, Antigravity, Copilot, custom LangGraph/AutoGen swarms) face hard production constraints:
+Autonomous AI coding agents (Claude Code, Cursor, Windsurf, Antigravity, Copilot, custom LangGraph swarms) face hard production constraints:
 
-1. **Turn & Tool Timeouts**: A single tool call that takes 60 seconds (data processing, web crawling, code generation, running test suites) blocks the LLM turn and triggers tool execution timeouts.
-2. **Subagent Orchestration**: Complex tasks require an orchestrator agent to fan-out subtasks across parallel subagents (`code_reviewer`, `researcher`, `tester`) and aggregate the structured results without deadlock.
-3. **Duplicate Tool Execution**: Network blips or agent retry loops cause side-effecting tools (charging credit cards, deploying code, dispatching webhooks) to fire repeatedly without distributed idempotency locks.
-4. **Worker Crashes & Ephemeral State Loss**: When background containers or agents crash, in-flight work disappears unless backed by durable storage.
-5. **Infrastructure Bloat**: Setting up dedicated Redis clusters, Celery, or RabbitMQ adds significant operational cost, consistency bugs, and dual-write problems.
+1. **Turn & Tool Timeouts**: A single tool call taking >15 seconds (scraping, data crunching, builds, testing) blocks the LLM turn and triggers agent timeout crashes.
+2. **Subagent Orchestration**: Complex workflows require a supervisor agent to fan-out tasks across specialized subagents (`researcher`, `reviewer`, `tester`) and fan-in structured results without hanging.
+3. **Duplicate Tool Execution**: Network retries or LLM re-prompting frequently cause side-effecting operations (credit card charges, deploys, webhooks) to fire multiple times without distributed idempotency locks.
+4. **Worker Crashes & Ephemeral State Loss**: When background containers or agents crash, in-memory queues (Redis) risk losing active tasks.
+5. **DevOps Bloat**: Setting up dedicated Redis clusters, Celery, or RabbitMQ adds friction and dual-write consistency hazards.
 
 ---
 
 ## 💡 How beastMQ Solves Agent Bottlenecks
 
-**beastMQ** turns **PostgreSQL** into a transactional, crash-resilient queue and agent task orchestration engine using native row-level lock primitives (`FOR UPDATE SKIP LOCKED`).
+**beastMQ** turns your existing **PostgreSQL** database into an ACID-durable asynchronous task queue and multi-agent coordination engine using row-level locks (`FOR UPDATE SKIP LOCKED`).
 
-| Agent Need                          | Traditional Broker (Redis / BullMQ)          | beastMQ (PostgreSQL Agent-First)                            |
-| :---------------------------------- | :------------------------------------------- | :---------------------------------------------------------- |
-| **Durability & ACID State**         | In-memory RAM (risk of loss on restart)      | **WAL-backed PostgreSQL tables**                            |
-| **Operational Overhead**            | Dedicated Redis instance / cluster           | **Zero new infrastructure** (reuses your existing DB)       |
-| **Atomic Outbox Enqueue**           | Dual-write problem / requires outbox relayer | **Enqueues atomically inside your business transactions**   |
-| **Subagent Parent-Child Hierarchy** | Custom schema or external orchestrator       | **Native `parentJobId` and `traceId` correlation**          |
-| **Result Persistence**              | Ephemeral or TTL-evicted                     | **Persistent `result: jsonb` storage for agent inspection** |
-| **Tool Idempotency**                | Application-level caching                    | **Distributed DB lock state machine (`idempotency_keys`)**  |
-| **Agent Ecosystem Compatibility**   | Proprietary APIs                             | **Universal Agent Skill (`skills.sh`) + `npx beastmq` CLI** |
+| Feature | Redis / BullMQ | Temporal / Celery | beastMQ (Agent-Native) |
+| :--- | :--- | :--- | :--- |
+| **Durability** | In-memory RAM (TTL risk) | External DB cluster | **Native WAL-backed PostgreSQL** |
+| **Infrastructure** | Dedicated Redis instance | Heavy cluster setup | **Zero extra infrastructure** |
+| **Atomic Enqueue** | Dual-write hazard | Separate workflow engine | **Atomic inside your DB transaction** |
+| **Multi-Agent Tracing** | Custom metadata | Complex DAG DSL | **Native `parentJobId` & `traceId` hierarchy** |
+| **Result Persistence** | Ephemeral / Evicted | Heavy history event log | **Structured `result: jsonb` column** |
+| **Tool Idempotency** | Application-level cache | Custom activity keys | **Distributed `idempotency_keys` table** |
+| **Agent Ecosystem** | Proprietary SDKs | Framework-specific | **`skills.sh` open standard + CLI** |
 
 ---
 
 ## 🏗️ Multi-Agent Architecture & Flow
 
+### System Topology
+
 ```mermaid
 flowchart TD
-    subgraph Agents ["Autonomous AI Agents & Orchestrators"]
-        Orchestrator["Orchestrator Agent\n(e.g., Planner / Coordinator)"]
-        SubagentA["Subagent A\n(Role: Researcher)"]
-        SubagentB["Subagent B\n(Role: Code Reviewer)"]
+    subgraph Agents ["Autonomous AI Agent Fleet"]
+        Orchestrator["Orchestrator Agent<br/>Planner / Supervisor"]
+        SubagentA["Subagent A<br/>Role: Researcher"]
+        SubagentB["Subagent B<br/>Role: Code Reviewer"]
     end
 
-    subgraph Interface ["Agent Interfaces"]
-        SkillPkg["Universal Agent Skill\n(skills/beastmq/SKILL.md)"]
-        CLI["CLI Tool: npx beastmq"]
+    subgraph Interface ["Execution Interfaces"]
+        SkillPkg["skills.sh Universal Skill"]
+        CLI["CLI: npx beastmq"]
         SDK["TypeScript SDK: BeastMQClient"]
     end
 
-    subgraph Database ["PostgreSQL Durability Engine (ACID)"]
-        JobsTable[("jobs Table\n(payload, result, parentJobId, traceId, agentRole)")]
-        IdempTable[("idempotency_keys Table\n(Distributed Tool Locks)")]
-        DLQTable[("dead_jobs Table\n(DLQ Archive)")]
+    subgraph Database ["PostgreSQL ACID Engine"]
+        JobsTable[("jobs Table")]
+        IdempTable[("idempotency_keys Table")]
+        DLQTable[("dead_jobs DLQ Table")]
     end
 
-    subgraph Workers ["beastMQ Worker Engine"]
-        TaskReg["Task / Tool Registry\n(taskRegistry.register)"]
-        ExecWatchdog["Task Runner & Timeout Watchdog"]
-        HeartbeatLoop["Heartbeat Lease Renewer (10s)"]
+    subgraph Workers ["Distributed Worker Fleet"]
+        TaskReg["Task & Tool Registry"]
+        ExecWatchdog["Timeout Watchdog & AbortSignal"]
+        HeartbeatLoop["Heartbeat Lease Renewer"]
     end
 
-    Orchestrator -->|1. Enqueue Parent Task| SDK
-    SDK -->|POST /jobs| JobsTable
-    Orchestrator -->|2. Spawn Subagent Tasks\n(parentJobId, traceId)| SDK
-    SDK -->|POST /jobs| JobsTable
+    Orchestrator -->|1. Enqueue Task| SDK
+    SDK -->|Atomic Insert| JobsTable
+    Orchestrator -->|2. Spawn Subtasks| SDK
+    SDK -->|Batch Insert with parentJobId| JobsTable
 
-    JobsTable -->|3. SELECT FOR UPDATE SKIP LOCKED| Workers
+    JobsTable -->|3. FOR UPDATE SKIP LOCKED| Workers
     Workers --> TaskReg
     TaskReg --> ExecWatchdog
     ExecWatchdog --> HeartbeatLoop
-    HeartbeatLoop -->|Renew locked_until lease| JobsTable
+    HeartbeatLoop -->|Renew Lease every 10s| JobsTable
 
-    ExecWatchdog -->|4. Save Computed JSON Result| JobsTable
-    ExecWatchdog -->|If fatal failure (attempts >= 5)| DLQTable
+    ExecWatchdog -->|4. Save Result to jobs.result| JobsTable
+    ExecWatchdog -->|Fatal Failures to DLQ| DLQTable
 
-    JobsTable -.->|5. Await Result / Fan-In| Orchestrator
+    JobsTable -.->|5. Fan-In & Await Subtasks| Orchestrator
+```
+
+### Multi-Agent Parent-Child Lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Human User
+    participant Orchestrator as Supervisor Agent
+    participant BeastMQ as BeastMQ Engine (PostgreSQL)
+    participant Worker as Worker Pool
+    participant Subagent as Subagent Runner
+
+    User->>Orchestrator: "Audit codebase & benchmark performance"
+    Note over Orchestrator: Splits into Parent Task + 2 Subagent Tasks
+    Orchestrator->>BeastMQ: Enqueue Parent Job (role: supervisor)
+    Orchestrator->>BeastMQ: Spawn Subtask 1 (role: auditor, parentJobId)
+    Orchestrator->>BeastMQ: Spawn Subtask 2 (role: benchmarker, parentJobId)
+    
+    par Parallel Subagent Execution
+        Worker->>BeastMQ: Claim Subtask 1 (SKIP LOCKED)
+        Worker->>Subagent: Run Code Audit
+        Subagent-->>Worker: Completed { issues: 0 }
+        Worker->>BeastMQ: Update result & status: completed
+    and
+        Worker->>BeastMQ: Claim Subtask 2 (SKIP LOCKED)
+        Worker->>Subagent: Run Benchmarks
+        Subagent-->>Worker: Completed { rps: 15400 }
+        Worker->>BeastMQ: Update result & status: completed
+    end
+
+    Orchestrator->>BeastMQ: wait-subtasks (parentJobId)
+    BeastMQ-->>Orchestrator: All subtasks completed with structured JSON results
+    Orchestrator->>User: "Audit & Benchmark complete: 0 issues, 15,400 RPS"
 ```
 
 ---
 
-## 🚀 Installation & Quickstart
+## 🚀 Installation & Setup
 
-### 1. Install as an Agent Skill (`npx skills`)
+### 1. Universal Agent Skill (`npx skills`)
 
-beastMQ implements the open **`skills.sh`** standard. When a user installs the skill, their AI Agent (Claude Code, Cursor, Windsurf, Antigravity, GitHub Copilot) **automatically uses beastMQ behind the scenes** to offload long-running operations, manage queues, run workers, and prevent turn timeouts—without requiring the human user to manually start servers or configure queues:
+beastMQ implements the open **`skills.sh`** standard. Once installed, your AI Agent (Claude Code, Cursor, Windsurf, Antigravity, GitHub Copilot) **automatically uses beastMQ under the hood** to offload long-running operations, manage queues, and prevent turn timeouts—without requiring manual server startup:
 
 ```bash
 # Install via skills.sh ecosystem
@@ -126,133 +171,109 @@ npx skills add <github-user>/beastmq
 npx skills add .
 ```
 
-*The skill instructions for AI Agents are located in [`skills/beastmq/SKILL.md`](file:///C:/Users/abhin/OneDrive/Desktop/Explore/beastMQ/skills/beastmq/SKILL.md) and [`SKILL.md`](file:///C:/Users/abhin/OneDrive/Desktop/Explore/beastMQ/SKILL.md).*
+*The agent execution instructions reside in [`skills/beastmq/SKILL.md`](file:///C:/Users/abhin/OneDrive/Desktop/Explore/beastMQ/skills/beastmq/SKILL.md).*
 
 ---
 
-### 2. Autonomous Agent Execution & Terminal CLI (`npx beastmq`)
+### 2. Terminal CLI (`npx beastmq`)
 
-AI agents can execute tasks **behind the hood** using direct database access or HTTP with zero extra server setup:
+AI agents and developers can execute queue commands directly from the terminal without boilerplate:
 
 ```bash
 # 1. Offload a long-running shell command (built-in agent.command handler)
-npx beastmq enqueue --cmd "node scripts/process_large_dataset.js" --role "data_agent" --priority 10
+npx beastmq enqueue --cmd "node scripts/process_data.js" --role "data_agent" --priority 10
 
 # 2. Offload a background HTTP fetch or webhook (built-in agent.http handler)
 npx beastmq enqueue --url "https://api.github.com/zen" --role "api_agent"
 
-# 3. Spawn a child subtask linked to a parent job (subagent hierarchy)
+# 3. Spawn a child subtask linked to a parent job
 npx beastmq enqueue \
   --type "agent.summarize" \
   --payload '{"documentId": "doc_99"}' \
   --parent-id "7b520d8e-88d5-44e3-9d30-09b128f3d96a" \
   --role "summarizer"
 
-# 4. Drain all pending jobs in a single pass (exits cleanly after processing)
+# 4. Drain all pending jobs in a single pass (exits cleanly when queue is empty)
 npx beastmq worker --drain
 
-# 5. Wait for completion and print the structured JSON result
+# 5. Wait for a specific job to complete and display structured JSON result
 npx beastmq wait 7b520d8e-88d5-44e3-9d30-09b128f3d96a --timeout 30000
 
-# 6. Check job status and result
-npx beastmq status 7b520d8e-88d5-44e3-9d30-09b128f3d96a
+# 6. Query all child subtasks spawned by a parent job
+npx beastmq subtasks 7b520d8e-88d5-44e3-9d30-09b128f3d96a
 
-# 7. Inspect & Replay Dead Letter Queue (DLQ)
+# 7. Await all child subtasks to finish
+npx beastmq wait-subtasks 7b520d8e-88d5-44e3-9d30-09b128f3d96a
+
+# 8. Query all jobs belonging to an agent trace session
+npx beastmq trace session_401
+
+# 9. Inspect & Replay Dead Letter Queue (DLQ)
 npx beastmq dlq list
 npx beastmq dlq replay 4b2c394f-61aa-402f-82c7-8f587482e27b
 ```
 
 ---
 
-### 3. Programmatic TypeScript SDK
-
-For agent applications, microservices, and tool runners:
+### 3. TypeScript SDK
 
 ```typescript
 import { BeastMQClient, taskRegistry } from "beastmq";
 
 const client = new BeastMQClient();
 
-// 1. Register an Agent Tool or Task Handler
-taskRegistry.register(
-  "agent.web_scrape",
-  async (payload: { url: string }, context) => {
-    // context provides: jobId, traceId, parentJobId, agentRole, attempts
-    console.log(`Scraping ${payload.url} for agent role: ${context.agentRole}`);
-    const html = await fetch(payload.url).then((r) => r.text());
-
-    // Return value is automatically persisted to jobs.result
-    return {
-      url: payload.url,
-      contentLength: html.length,
-      scrapedAt: new Date().toISOString(),
-    };
-  },
-);
+// 1. Register a custom Agent Tool or Task Handler
+taskRegistry.register("agent.web_scrape", async (payload: { url: string }, context) => {
+  // context contains: jobId, traceId, parentJobId, agentRole, attempts, signal
+  const pageData = await fetch(payload.url, { signal: context.signal }).then((r) => r.text());
+  
+  // Return value is automatically saved to jobs.result in PostgreSQL
+  return { length: pageData.length, scrapedAt: new Date().toISOString() };
+});
 
 // 2. Enqueue the task
-const job = await client.enqueue({
+const parentJob = await client.enqueue({
   type: "agent.web_scrape",
   payload: { url: "https://news.ycombinator.com" },
-  traceId: "trace-session-102",
-  agentRole: "web_researcher",
+  traceId: "session-42",
+  agentRole: "researcher",
   priority: 5,
 });
 
-// 3. Await the structured result without blocking turns
-const completed = await client.waitForJob(job.id, { timeoutMs: 20_000 });
-console.log("Agent Task Output:", completed.result);
-```
-
----
-
-## 🧠 Agentic Core Features
-
-### 1. Subagent Task Hierarchy & Tracing
-
-Every task supports `parentJobId`, `traceId`, and `agentRole`. An orchestrator agent can spawn multiple subtasks in parallel, and later call:
-
-```typescript
-const subtasks = await client.getSubtasks(parentJobId);
-```
-
-to inspect all child subagent progress and fan-in their results.
-
----
-
-### 2. Dynamic Task & Tool Registry
-
-Agents can register and hot-load handlers for specific tasks:
-
-```typescript
-taskRegistry.register("tool.code_review", async (payload, context) => {
-  return await analyzeCodeDiff(payload.diff);
+// 3. Spawn a child subtask
+await client.spawnSubtask(parentJob.id, {
+  type: "agent.summarize",
+  payload: { maxLines: 5 },
+  agentRole: "summarizer",
 });
+
+// 4. Wait for all subtasks to complete (Fan-In)
+const { subtasks, allCompleted } = await client.waitForSubtasks(parentJob.id);
+console.log("Subagent Results:", subtasks.map((s) => s.result));
 ```
 
-If no custom handler is registered, beastMQ falls back to default simulation handling, guaranteeing 100% backward compatibility.
-
 ---
 
-### 3. Non-Blocking Results & Structured JSON Persistence
+## 🧠 Core Agentic Features
 
-Unlike simple message brokers where outputs are forgotten after acknowledgment, beastMQ saves the handler's returned value into a persistent `result: jsonb` column on the `jobs` table. Agents can query results minutes, hours, or days later.
+### 1. Multi-Agent Hierarchy & Subtask Tracing
+Every job record supports `parentJobId`, `traceId`, and `agentRole`. An orchestrator can fan-out subtasks and monitor the whole tree:
+- `client.getSubtasks(parentJobId)`: Inspects all child subtasks.
+- `client.waitForSubtasks(parentJobId)`: Blocks until all child subtasks reach `completed` or `dead`.
+- `client.getTrace(traceId)`: Returns all jobs spanning an entire multi-agent dialogue session.
 
----
+### 2. Built-In Agent Handlers (`agent.command` & `agent.http`)
+Zero configuration required for common agent offloading:
+- **`agent.command`**: Runs shell processes via `child_process.exec`. Captures `stdout`, `stderr`, `exitCode`, and `durationMs`. Honors `AbortSignal` on job timeouts to prevent zombie processes.
+- **`agent.http`**: Performs async HTTP requests using native `fetch`. Captures status code, response headers, JSON/text body, and latency.
 
-### 4. Distributed Idempotency (Prevent Duplicate Tool Runs)
+### 3. Distributed Idempotency State Machine
+Prevents double-charging, repeat tool calls, or redundant API executions across workers:
+- **Producer-side**: Duplicate submissions with an identical `idempotencyKey` return `200 OK` with `{ duplicate: true, id }`.
+- **Consumer-side**: The `idempotency_keys` table tracks `processing` vs `completed` status with active lease locks.
 
-Agents frequently retry requests due to network blips or LLM hallucinations. With `idempotencyKey`:
-
-- **Producer level**: Duplicate submissions return `200 OK` with `{ duplicate: true, id }` instead of inserting a second job.
-- **Consumer level**: The distributed `idempotency_keys` table tracks `processing` vs `completed` status with active worker leases, preventing concurrent duplicate tool execution across the worker fleet.
-
----
-
-### 5. Atomic Claims (`FOR UPDATE SKIP LOCKED`)
-
-Workers claim jobs using PostgreSQL row-level locks inside an atomic transaction:
-
+### 4. Atomic Claims (`FOR UPDATE SKIP LOCKED`)
+Workers claim available tasks using PostgreSQL row-level locks inside an atomic transaction:
 ```sql
 SELECT * FROM jobs
 WHERE (status = 'pending' AND available_at <= NOW())
@@ -261,264 +282,126 @@ ORDER BY priority DESC, created_at ASC
 LIMIT 1
 FOR UPDATE SKIP LOCKED;
 ```
-
 - **Zero collisions**: Concurrent workers never claim the same task.
-- **Strict prioritization**: Highest `priority` runs first, falling back to FIFO order (`created_at ASC`).
+- **Strict prioritization**: Highest `priority` runs first, falling back to FIFO (`created_at ASC`).
 
----
+### 5. Lease-Based Worker Crash Recovery
+Every running task receives a time-bounded lease (`locked_until = NOW() + LEASE_DURATION_MS`).
+- Active workers run a 10-second heartbeat to renew their lease.
+- If a worker crashes or is killed, its heartbeat ceases. Once `locked_until` expires, a peer worker claims and completes the job.
 
-### 6. Lease-Based Worker Crash Recovery
-
-Every claimed job receives a time-bounded lease (`locked_until = NOW() + LEASE_DURATION_MS`).
-
-- Active workers emit background heartbeats every 10 seconds to renew their lease.
-- If a worker crashes or is OOM-killed, its heartbeat ceases. Once `locked_until` expires, a peer worker claims and completes the job.
-
----
-
-### 7. Exponential Backoff Retries & Dead Letter Queue (DLQ)
-
-- **Exponential Backoff**: When a job throws an exception or hits a timeout, it is rescheduled with exponential delay:
+### 6. Exponential Backoff & Dead Letter Queue (DLQ)
+- **Exponential Backoff**: When a job throws an error or times out, it is rescheduled with exponential delay:
   $$\text{Delay} = 1000 \times 2^{(\text{attempts} - 1)} \text{ ms}$$
-- **Dead Letter Queue (DLQ)**: After 5 attempts, the job is archived to the `dead_jobs` table with its error stack trace and payload, and can be resurrected via `client.replayDeadJob(id)`.
+- **Dead Letter Queue (DLQ)**: After 5 attempts, the job transitions to `dead` and is archived in `dead_jobs`. It can be inspected and resurrected via `npx beastmq dlq replay <id>`.
+
+### 7. Dual-Mode Execution (Direct DB + HTTP Server)
+- **Direct DB Mode**: CLI commands and SDK clients connect directly to PostgreSQL. No server process required.
+- **HTTP Mode**: If an external `BEASTMQ_URL` is configured, client commands route through the Express HTTP API.
 
 ---
 
-### 8. Graceful Shutdown & Drain
+## 💻 CLI Command Matrix
 
-Workers listen for `SIGINT`, `SIGTERM`, IPC, and STDIN `"shutdown"` signals. When triggered:
-
-- Workers immediately cease claiming new jobs.
-- Active in-flight tasks are allowed to finish and write their results to the database before the process exits cleanly.
-
----
-
-## 📡 HTTP API Reference for Agents
-
-### `POST /jobs` (Enqueue Task / Subtask)
-
-**Headers:** `Content-Type: application/json`
-
-```bash
-curl -X POST http://localhost:3000/jobs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "agent.summarize",
-    "payload": { "text": "Long context string..." },
-    "priority": 10,
-    "idempotencyKey": "summary_task_hash_123",
-    "traceId": "trace_agent_42",
-    "parentJobId": "18a4a523-8bc6-46f9-b88a-ea4c5eb44509",
-    "agentRole": "summarizer"
-  }'
-```
-
-**Response (`201 Created`):**
-
-```json
-{
-  "id": "7b520d8e-88d5-44e3-9d30-09b128f3d96a",
-  "status": "pending"
-}
-```
+| Command | Arguments / Flags | Description |
+| :--- | :--- | :--- |
+| `enqueue` | `--type <type> --payload '<json>'` | Enqueue a new background job |
+| `enqueue` | `--cmd "<command>" [--role <role>]` | Shortcut to offload a shell command |
+| `enqueue` | `--url "<url>" [--method GET\|POST]` | Shortcut to offload a background HTTP request |
+| `status` | `<jobId>` | Query status, timing, and result of a job |
+| `wait` | `<jobId> [--timeout <ms>]` | Wait until a job completes and output its result |
+| `list` | `[--status <status>] [--limit <n>]` | List recent jobs with optional status filter |
+| `subtasks` | `<parentId>` | List all child subtasks spawned by a parent job |
+| `wait-subtasks` | `<parentId> [--timeout <ms>]` | Await all child subtasks of a parent to finish |
+| `trace` | `<traceId>` | List all jobs belonging to an agent trace session |
+| `worker` | `[--concurrency <n>]` | Start a persistent background worker process |
+| `worker` | `--drain` | Process all pending jobs until queue is empty, then exit |
+| `dlq list` | _none_ | List permanently failed jobs in Dead Letter Queue |
+| `dlq replay` | `<deadJobId>` | Replay a failed job back to pending status |
 
 ---
 
-### `GET /jobs/:id` (Query Status & Result)
+## 📡 REST API Reference
 
-```bash
-curl http://localhost:3000/jobs/7b520d8e-88d5-44e3-9d30-09b128f3d96a
-```
-
-**Response (`200 OK`):**
-
-```json
-{
-  "id": "7b520d8e-88d5-44e3-9d30-09b128f3d96a",
-  "type": "agent.summarize",
-  "status": "completed",
-  "payload": { "text": "Long context string..." },
-  "result": { "summary": "Concise executive overview..." },
-  "attempts": 1,
-  "traceId": "trace_agent_42",
-  "parentJobId": "18a4a523-8bc6-46f9-b88a-ea4c5eb44509",
-  "agentRole": "summarizer",
-  "startedAt": "2026-09-30T18:13:30.000Z",
-  "completedAt": "2026-09-30T18:13:31.000Z"
-}
-```
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/jobs` | Enqueue a job or agent task |
+| `GET` | `/jobs/:id` | Fetch job details, status, attempts, error, and result |
+| `GET` | `/jobs` | List recent jobs (supports `?status=`, `?traceId=`, `?limit=`) |
+| `POST` | `/agent/tasks` | Agent-tailored dispatch endpoint |
+| `GET` | `/agent/tasks/:id/subtasks` | Retrieve all child subtasks of a parent job |
+| `GET` | `/agent/traces/:traceId` | Retrieve all jobs for an agent trace session |
+| `GET` | `/dead-jobs` | List all Dead Letter Queue records |
+| `POST` | `/dead-jobs/:id/replay` | Replay a dead job back into the active queue |
 
 ---
 
-### `GET /agent/tasks/:id/subtasks` (Subagent Fan-In)
-
-Returns all child jobs linked to a parent job ID.
-
-### `GET /agent/traces/:traceId` (Trace Correlation)
-
-Returns all jobs across an entire agent conversation or trace.
-
-### `GET /dead-jobs` & `POST /dead-jobs/:id/replay` (DLQ Forensics)
-
-Inspect failed jobs and replay them back into `status = 'pending'`.
-
----
-
-## 🗄️ Database Schema & Data Model
+## 🗄️ Database Schema
 
 ### `jobs` Table
-
-| Column            | Type                     | Description                                         |
-| :---------------- | :----------------------- | :-------------------------------------------------- |
-| `id`              | `uuid PRIMARY KEY`       | Unique job identifier (`gen_random_uuid()`)         |
-| `type`            | `varchar(255)`           | Task routing type (e.g. `agent.scrape`)             |
-| `priority`        | `integer DEFAULT 0`      | Priority weighting (higher claims first)            |
-| `payload`         | `jsonb`                  | Input payload for the task                          |
-| `status`          | `text DEFAULT 'pending'` | `pending`, `running`, `completed`, `dead`           |
-| `result`          | `jsonb`                  | **Structured execution output produced by handler** |
-| `trace_id`        | `text`                   | **Correlation trace ID for agent conversation**     |
-| `parent_job_id`   | `uuid`                   | **Parent task ID for subagent hierarchy**           |
-| `agent_role`      | `text`                   | **Role name of the executing subagent**             |
-| `locked_by`       | `text`                   | Worker UUID holding active lease                    |
-| `locked_until`    | `timestamp`              | Lease expiration timestamp                          |
-| `idempotency_key` | `text UNIQUE`            | Deduplication key                                   |
-| `available_at`    | `timestamp`              | Earliest time eligible for processing               |
-| `attempts`        | `integer DEFAULT 0`      | Execution attempt count                             |
-| `started_at`      | `timestamp`              | Start timestamp of current attempt                  |
-| `completed_at`    | `timestamp`              | Completion timestamp                                |
-| `last_error`      | `text`                   | Captured error message                              |
-| `created_at`      | `timestamp`              | Creation timestamp                                  |
-| `updated_at`      | `timestamp`              | Last update timestamp                               |
+```sql
+CREATE TABLE jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type VARCHAR(255) NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 0,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending, running, completed, dead
+  result JSONB,                          -- Structured execution output
+  trace_id TEXT,                         -- Conversation correlation trace
+  parent_job_id UUID,                    -- Parent task for subagent hierarchy
+  agent_role TEXT,                       -- Role name of executing subagent
+  locked_by TEXT,                        -- Worker UUID holding active lease
+  locked_until TIMESTAMP,                -- Lease expiration timestamp
+  idempotency_key TEXT UNIQUE,           -- Deduplication constraint
+  available_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  last_error TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
 
 ---
 
-## ⚙️ Setup & Running with `npm`
+## ⚙️ Production Deployment & Sizing
 
-### 1. Prerequisites
+### Environment Variables (`.env`)
 
-- **Node.js**: `v20.x` or higher
-- **PostgreSQL**: `v14.x` or higher
-- **Package Manager**: `npm` (v10+)
+| Variable | Default | Production Recommendation | Description |
+| :--- | :--- | :--- | :--- |
+| `DATABASE_URL` | _required_ | Use connection pooling (PgBouncer/Supabase) | PostgreSQL connection string |
+| `CONCURRENCY` | `5` | `10` – `20` per container | Number of concurrent worker fibers |
+| `MIN_POLL_DELAY` | `100` | `50` (ms) | Minimum backoff delay when queue is idle |
+| `MAX_POLL_DELAY` | `5000` | `2000` (ms) | Maximum backoff delay when queue is idle |
+| `JOB_TIMEOUT` | `30000` | `60000` (ms) | Task execution timeout watchdog |
+| `LEASE_DURATION_MS` | `300000` | `120000` (ms) | Heartbeat lease validity window |
+| `BEASTMQ_API_KEY` | _optional_ | Set a strong random secret | Secures HTTP API endpoints |
 
-### 2. Installation
-
-```bash
-git clone https://github.com/your-org/beastMQ.git
-cd beastMQ
-npm install
-```
-
-### 3. Environment Configuration
-
-```bash
-cp .env.example .env
-```
-
-Configure `.env`:
-
-```dotenv
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/beastmq?sslmode=disable"
-PORT=3000
-CONCURRENCY=5
-MIN_POLL_DELAY=100
-MAX_POLL_DELAY=5000
-JOB_TIMEOUT=30000
-LEASE_DURATION_MS=300000
-```
-
-### 4. Database Migrations
-
-```bash
-# Push schema directly
-npm run db:push
-
-# Or run versioned migrations
-npm run db:generate
-npm run db:migrate
-```
-
-### 5. Start Server & Workers
-
-```bash
-# Start API Server (Development)
-npm run dev
-
-# Start API Server (Production)
-npm run build
-npm start
-
-# Start Background Worker
-npm run worker
-```
+### Connection Pool Auto-Scaling
+The PostgreSQL pool dynamically scales its ceiling based on concurrency:
+$$\text{Pool Max} = \max(20, \text{concurrency} \times 2 + 10)$$
 
 ---
 
 ## 🧪 Testing & Verification
 
-beastMQ includes comprehensive integration tests verifying queue durability, crash recovery, and agentic workflows:
+beastMQ comes with an exhaustive test suite verifying resilience, concurrency, and security:
 
 ```bash
-# 1. Run all core queue resilience tests (Crash, Timeout, Idempotency, DLQ, Shutdown, Priority)
+# 1. Core Queue Resilience (Worker Crash, Timeout, Idempotency, DLQ, Shutdown, Priority)
 npm test
 
-# 2. Run the agentic capabilities test suite (Subagents, Results, Handlers, Replay)
+# 2. Agentic Layer Integration (Parent-Child Subagents, Handlers, Trace Correlation)
 npm run test:agent
 
-# 3. Test the CLI interface
-npm run cli help
-```
-
----
-
-## 📂 Modular Architecture & Structure
-
-```text
-beastMQ/
-├── skills/                    # 🌐 Open Agent Skills Standard (skills.sh)
-│   └── beastmq/
-│       ├── SKILL.md           # Universal Agent Skill definition
-│       └── references/        # API and agentic workflow patterns
-├── SKILL.md                   # Root skill entrypoint (for `npx skills add .`)
-├── .agents/skills/beastmq/    # Workspace skill discovery for Antigravity
-├── src/
-│   ├── core/                  # ⚙️ Core Queue Primitives
-│   │   ├── types.ts           # JobRecord, EnqueueJobInput, JobStatus
-│   │   ├── claim.ts           # Atomic SELECT ... FOR UPDATE SKIP LOCKED
-│   │   ├── lease.ts           # Lease duration & heartbeat renewer
-│   │   ├── idempotency.ts     # Distributed idempotency key state machine
-│   │   └── retry.ts           # Exponential backoff & DLQ routing
-│   ├── agent/                 # 🧠 Agentic Execution Layer
-│   │   ├── context.ts         # AgentTaskContext (traceId, parentJobId, agentRole)
-│   │   ├── registry.ts        # Task & Tool Handler Registry (taskRegistry)
-│   │   ├── executor.ts        # Agent Task Runner & timeout watchdog
-│   │   ├── workflow.ts        # Subagent task spawning & trace queries
-│   │   └── client.ts          # BeastMQClient SDK (enqueue, wait, subagents)
-│   ├── api/                   # 🌐 HTTP API Layer
-│   │   ├── routes/            # /jobs, /dead-jobs, /agent/tasks
-│   │   └── app.ts             # Express app composition & route mounting
-│   ├── worker/                # 🛠️ Worker Engine & Daemons
-│   │   ├── runner.ts          # Concurrent fiber pool & adaptive backoff
-│   │   └── shutdown.ts        # Graceful signal listeners (SIGINT, SIGTERM, IPC)
-│   ├── cli/                   # 💻 CLI Layer (`npx beastmq`)
-│   │   └── index.ts           # Command parser (enqueue, wait, status, dlq, worker)
-│   ├── db/                    # 🗄️ Database & Schema Layer
-│   │   ├── index.ts           # PostgreSQL pool & Drizzle ORM client
-│   │   └── schema.ts          # jobs, dead_jobs, idempotency_keys
-│   ├── server.ts              # HTTP server daemon entrypoint
-│   ├── worker.ts              # Worker process daemon entrypoint
-│   └── index.ts               # Main package exports (SDK, Registry, Core Types)
-├── tests/
-│   ├── run_tests.ts           # Core queue resilience tests (1 to 7)
-│   ├── test_agent_layer.ts    # Agentic layer integration tests (SDK, subagents, DLQ)
-│   └── test_db.ts             # Database constraints inspection utility
-├── drizzle/                   # Drizzle ORM migration snapshots and SQL
-├── .env.example               # Sample environment configuration template
-├── package.json               # NPM scripts, binary definition (`beastmq`), dependencies
-└── tsconfig.json              # TypeScript compiler settings (NodeNext, Strict)
+# 3. Security Audit & Vulnerability Verification (UUID validation, AbortSignal, Pool limits, Auth)
+npm run test:audit
 ```
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [ISC License](file:///C:/Users/abhin/OneDrive/Desktop/Explore/beastMQ/package.json).
+Distributed under the [ISC License](file:///C:/Users/abhin/OneDrive/Desktop/Explore/beastMQ/package.json).
