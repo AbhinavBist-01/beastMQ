@@ -335,8 +335,8 @@ Every running task receives a time-bounded lease (`locked_until = NOW() + LEASE_
 | `subtasks`      | `<parentId>`                         | List all child subtasks spawned by a parent job          |
 | `wait-subtasks` | `<parentId> [--timeout <ms>]`        | Await all child subtasks of a parent to finish           |
 | `trace`         | `<traceId>`                          | List all jobs belonging to an agent trace session        |
-| `worker`        | `[--concurrency <n>]`                | Start a persistent background worker process             |
 | `worker`        | `--drain`                            | Process all pending jobs until queue is empty, then exit |
+| `keygen`        | `[--save]`                           | Generate a cryptographically secure API key for `.env`   |
 | `dlq list`      | _none_                               | List permanently failed jobs in Dead Letter Queue        |
 | `dlq replay`    | `<deadJobId>`                        | Replay a failed job back to pending status               |
 
