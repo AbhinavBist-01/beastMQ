@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { MessageFlowVisualization } from "./MessageFlowVisualization";
-import { Copy, Check, Terminal, ArrowRight, Github, Sparkles, Zap, Shield, Cpu } from "lucide-react";
+import { Copy, Check, Terminal, ArrowRight, Sparkles, Zap, Shield, Cpu } from "lucide-react";
+import { GithubIcon } from "./GithubIcon";
 
 export function HeroSection() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -143,7 +144,7 @@ export function HeroSection() {
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/[0.12] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/[0.25] text-zinc-200 hover:text-white font-mono text-sm tracking-wide transition-all active:scale-95"
             >
-              <Github className="w-4 h-4" />
+              <GithubIcon className="w-4 h-4" />
               <span>View on GitHub ↗</span>
             </a>
           </div>

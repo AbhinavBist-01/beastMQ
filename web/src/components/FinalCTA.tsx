@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { BeastLogo } from "./BeastLogo";
-import { Copy, Check, Terminal, ArrowRight, Github, Sparkles } from "lucide-react";
+import { Copy, Check, Terminal, ArrowRight, Sparkles } from "lucide-react";
+import { GithubIcon } from "./GithubIcon";
 
 export function FinalCTA() {
   const [copied, setCopied] = useState(false);
@@ -72,7 +73,7 @@ export function FinalCTA() {
             rel="noreferrer"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-[#00FF66] hover:bg-[#4EFE82] text-black font-mono font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(0,255,102,0.3)] hover:shadow-[0_0_40px_rgba(0,255,102,0.5)] active:scale-95"
           >
-            <Github className="w-4 h-4" />
+            <GithubIcon className="w-4 h-4" />
             <span>Explore Repository</span>
           </a>
 

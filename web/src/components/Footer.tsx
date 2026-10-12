@@ -1,7 +1,8 @@
 import React from "react";
 import Link from "next/link";
 import { BeastBrand } from "./BeastLogo";
-import { Github, ArrowUpRight, Terminal, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Terminal, ShieldCheck } from "lucide-react";
+import { GithubIcon } from "./GithubIcon";
 
 export function Footer() {
   return (
@@ -109,7 +110,7 @@ export function Footer() {
                   rel="noreferrer"
                   className="hover:text-[#00FF66] transition-colors flex items-center gap-1"
                 >
-                  <Github className="w-3 h-3" />
+                  <GithubIcon className="w-3 h-3" />
                   <span>GitHub Repository</span>
                 </a>
               </li>
