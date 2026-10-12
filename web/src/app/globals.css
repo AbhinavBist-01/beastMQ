@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+:root {
+  --background: #08090B;
+  --foreground: #F3F4F6;
+  --muted: #94A3B8;
+  --card-bg: rgba(14, 16, 21, 0.75);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --accent-green: #00FF66;
+  --accent-green-glow: rgba(0, 255, 102, 0.2);
+  --accent-emerald: #10B981;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background-color: #08090B;
+  color: #F3F4F6;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  selection-background-color: #00FF66;
+  selection-color: #08090B;
+}
+
+::selection {
+  background-color: #00FF66;
+  color: #08090B;
+}
+
+/* Custom Grid Background */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.bg-dot-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Fine Glow Effects */
+.green-glow {
+  box-shadow: 0 0 40px -10px rgba(0, 255, 102, 0.25);
+}
+
+.green-glow-sm {
+  box-shadow: 0 0 20px -5px rgba(0, 255, 102, 0.3);
+}
+
+.green-border-glow {
+  border-color: rgba(0, 255, 102, 0.4);
+  box-shadow: 0 0 15px rgba(0, 255, 102, 0.15);
+}
+
+/* Glassmorphism Card Style */
+.glass-panel {
+  background: rgba(13, 16, 21, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-panel:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Custom Animation Keyframes */
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+@keyframes packetTravel {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
