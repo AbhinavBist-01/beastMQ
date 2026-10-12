@@ -144,7 +144,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-4 text-[11px] font-mono text-zinc-500">
           <div>
-            © {new Date().getFullYear()} BeastMQ. Released under the ISC License.
+            © 2026 BeastMQ. Released under the ISC License.
           </div>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1 text-zinc-400">
