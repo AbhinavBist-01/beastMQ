@@ -9,7 +9,7 @@ export function FinalCTA() {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText("npx skills add beastmq");
+    navigator.clipboard.writeText("npx skills add AbhinavBist-01/beastmq");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

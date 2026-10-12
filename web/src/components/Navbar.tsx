@@ -66,7 +66,7 @@ export function Navbar() {
         {/* Right Side: Sleek, Minimalist Repository Icon Link */}
         <div className="hidden md:flex items-center">
           <a
-            href="https://github.com/abhinavbist/beastMQ"
+            href="https://github.com/AbhinavBist-01/beastMQ"
             target="_blank"
             rel="noreferrer"
             aria-label="View BeastMQ on GitHub"
@@ -121,7 +121,7 @@ export function Navbar() {
               Terminal
             </a>
             <a
-              href="https://github.com/abhinavbist/beastMQ"
+              href="https://github.com/AbhinavBist-01/beastMQ"
               target="_blank"
               rel="noreferrer"
               className="pt-2 border-t border-white/[0.06] flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
