@@ -11,12 +11,8 @@ export function FeatureSection() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Section Header: Direct & Concrete */}
+        {/* Section Header */}
         <div className="max-w-3xl mb-14 space-y-3">
-          <div className="inline-flex items-center gap-2 text-xs font-mono tracking-widest text-[#00FF66] uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00FF66]" />
-            CORE CAPABILITIES
-          </div>
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-sans">
             Everything you need for background jobs. <br />
             <span className="text-zinc-400">Zero additional infrastructure.</span>

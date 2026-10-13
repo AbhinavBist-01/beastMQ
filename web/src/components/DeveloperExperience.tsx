@@ -84,10 +84,6 @@ Archived DLQ record removed.`,
         
         {/* Section Heading */}
         <div className="max-w-3xl mb-14 space-y-3">
-          <div className="inline-flex items-center gap-2 text-xs font-mono tracking-widest text-[#00FF66] uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00FF66]" />
-            CLI & OBSERVABILITY
-          </div>
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-sans">
             Built for terminals. <br />
             <span className="text-zinc-400">Ready for autonomous agents.</span>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Terminal, Copy, Check, Sparkles, Cpu, ShieldCheck, ArrowRight, Zap, Bot } from "lucide-react";
+import { Terminal, Copy, Check, Cpu, ShieldCheck, ArrowRight, Zap } from "lucide-react";
 
 export function SkillsEcosystem() {
   const [copied, setCopied] = useState(false);
@@ -15,14 +15,6 @@ export function SkillsEcosystem() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const agents = [
-    { name: "Claude Code", status: "Native Certified" },
-    { name: "Cursor AI", status: "Native Certified" },
-    { name: "Windsurf", status: "Native Certified" },
-    { name: "Google Antigravity", status: "Native Certified" },
-    { name: "LangGraph / Swarms", status: "REST / SDK" },
-  ];
-
   return (
     <section className="py-20 md:py-28 border-t border-white/[0.08] relative overflow-hidden">
       {/* Ambient background glow */}
@@ -31,37 +23,16 @@ export function SkillsEcosystem() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="max-w-3xl mb-14 space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#00FF66]/30 bg-[#00FF66]/10 text-xs font-mono font-medium tracking-wider text-[#00FF66]">
-            <Sparkles className="w-3.5 h-3.5 text-[#00FF66]" />
-            <span>UNIVERSAL AGENT SKILL (SKILLS.SH)</span>
-          </div>
+        <div className="max-w-3xl mb-12 space-y-3">
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-sans">
             Give your AI agents <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-[#00FF66]">
+            <span className="text-zinc-400">
               infinite execution stamina.
             </span>
           </h2>
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl font-normal leading-relaxed">
             When coding agents run slow commands (&gt;15s), their turns crash. BeastMQ acts as an autonomous background shield through the open <strong className="text-white">skills.sh</strong> standard.
           </p>
-        </div>
-
-        {/* Compatible Agent Fleet Badges */}
-        <div className="mb-10 flex flex-wrap items-center gap-3">
-          <span className="text-xs font-mono uppercase text-zinc-500 tracking-wider">Verified Across:</span>
-          {agents.map((a, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] text-xs font-mono text-zinc-300"
-            >
-              <Bot className="w-3.5 h-3.5 text-[#00FF66]" />
-              <span className="text-white font-bold">{a.name}</span>
-              <span className="text-[10px] text-[#00FF66] px-1.5 py-0.2 rounded bg-[#00FF66]/10">
-                {a.status}
-              </span>
-            </div>
-          ))}
         </div>
 
         {/* Main Grid: Interactive Agent Tool Call Simulator + Capabilities */}
