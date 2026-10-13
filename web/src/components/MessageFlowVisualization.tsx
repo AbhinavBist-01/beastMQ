@@ -1,318 +1,232 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { BeastLogo } from "./BeastLogo";
-import { Activity, Cpu, Database, Server, Zap, ShieldCheck, RefreshCw, AlertTriangle } from "lucide-react";
+import { Terminal, Database, Server, CheckCircle2, Play, Sparkles, Clock, AlertTriangle, ArrowRight, ShieldCheck } from "lucide-react";
 
-interface Packet {
-  id: number;
-  source: number; // 0, 1, 2
-  target: number; // 0, 1, 2, 3
-  progress: number;
-  color: string;
+interface Scenario {
+  id: string;
+  name: string;
+  role: string;
+  type: string;
+  payload: Record<string, any>;
+  duration: number;
+  output: Record<string, any>;
+  why: string;
 }
 
+const SCENARIOS: Scenario[] = [
+  {
+    id: "build",
+    name: "Offload Slow Build / Test",
+    role: "build_runner",
+    type: "agent.command",
+    payload: { command: "npm run build && npm test", cwd: "/app" },
+    duration: 1800,
+    output: { exitCode: 0, stdout: "✓ 48 tests passed in 1.8s", durationMs: 1840 },
+    why: "Prevents LLM turn timeouts (>15s). The agent enqueues this and stays unblocked.",
+  },
+  {
+    id: "scrape",
+    name: "Async Web Scraping & APIs",
+    role: "researcher",
+    type: "agent.http",
+    payload: { url: "https://api.github.com/repos/AbhinavBist-01/beastMQ", method: "GET" },
+    duration: 1200,
+    output: { status: 200, stars: 142, forks: 19, latencyMs: 340 },
+    why: "Fetches heavy data in the background without blocking the prompt loop.",
+  },
+  {
+    id: "subagents",
+    name: "Multi-Subagent Swarm Fan-Out",
+    role: "supervisor",
+    type: "agent.swarm",
+    payload: { parentId: "task_99", subtasks: 3, traceId: "trace_audit_01" },
+    duration: 2200,
+    output: { subtasksCompleted: 3, totalIssuesFound: 0, fanInStatus: "allCompleted" },
+    why: "Coordinates child subagents in parallel with parentJobId hierarchy.",
+  },
+];
+
 export function MessageFlowVisualization() {
-  const [throughput, setThroughput] = useState(14820);
-  const [latency, setLatency] = useState(3.8);
-  const [totalProcessed, setTotalProcessed] = useState(128490);
-  const [packets, setPackets] = useState<Packet[]>([]);
-  const [activeTab, setActiveTab] = useState<"stream" | "inspect">("stream");
-  const [burstActive, setBurstActive] = useState(false);
+  const [selectedScenario, setSelectedScenario] = useState<Scenario>(SCENARIOS[0]!);
+  const [stage, setStage] = useState<"idle" | "enqueuing" | "claimed" | "completed">("completed");
+  const [activeJobId, setActiveJobId] = useState("a81f9b02-44df-4192");
+  const [executionLog, setExecutionLog] = useState<string>("✓ Job completed in 1.8s. Results saved in jobs.result");
 
-  // Animate throughput ticker slightly to look authentic
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setThroughput((prev) => {
-        const delta = Math.floor(Math.random() * 41) - 20;
-        return Math.max(13500, Math.min(15800, prev + delta));
-      });
-      setLatency((prev) => +(prev + (Math.random() * 0.4 - 0.2)).toFixed(1));
-      setTotalProcessed((prev) => prev + Math.floor(Math.random() * 25) + 10);
-    }, 1200);
+  const runSimulation = (scenario: Scenario) => {
+    setSelectedScenario(scenario);
+    setStage("enqueuing");
+    const newId = Math.random().toString(36).substring(2, 10) + "-44df";
+    setActiveJobId(newId);
+    setExecutionLog(`1. Enqueued to PostgreSQL jobs table (status: pending)...`);
 
-    return () => clearInterval(interval);
-  }, []);
-
-  // Animate message packets moving along the grid
-  useEffect(() => {
-    const packetTimer = setInterval(() => {
-      setPackets((current) => {
-        // Advance existing packets
-        const advanced = current
-          .map((p) => ({ ...p, progress: p.progress + 0.04 }))
-          .filter((p) => p.progress <= 1);
-
-        // Spawn new packet randomly
-        if (Math.random() > 0.35 && advanced.length < 8) {
-          advanced.push({
-            id: Date.now() + Math.random(),
-            source: Math.floor(Math.random() * 3),
-            target: Math.floor(Math.random() * 4),
-            progress: 0,
-            color: Math.random() > 0.9 ? "#EF4444" : "#00FF66",
-          });
-        }
-        return advanced;
-      });
-    }, 40);
-
-    return () => clearInterval(packetTimer);
-  }, []);
-
-  const triggerBurst = () => {
-    setBurstActive(true);
-    setThroughput(24190);
-    setPackets((prev) => [
-      ...prev,
-      { id: Math.random(), source: 0, target: 0, progress: 0.05, color: "#00FF66" },
-      { id: Math.random(), source: 1, target: 1, progress: 0.1, color: "#00FF66" },
-      { id: Math.random(), source: 2, target: 2, progress: 0.15, color: "#00FF66" },
-      { id: Math.random(), source: 0, target: 3, progress: 0.2, color: "#00FF66" },
-    ]);
     setTimeout(() => {
-      setBurstActive(false);
-    }, 1500);
+      setStage("claimed");
+      setExecutionLog(`2. Claimed via FOR UPDATE SKIP LOCKED. Worker heartbeat active.`);
+    }, 700);
+
+    setTimeout(() => {
+      setStage("completed");
+      setExecutionLog(`3. Finished. Result stored in jobs.result JSONB. Zero agent timeouts.`);
+    }, scenario.duration);
   };
 
   return (
-    <div className="relative w-full rounded-2xl border border-white/[0.08] bg-[#0A0D12]/90 backdrop-blur-xl shadow-[0_20px_70px_rgba(0,0,0,0.8)] overflow-hidden">
-      {/* Top Header Bar */}
-      <div className="flex flex-wrap items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/[0.06] bg-black/30 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-            <span className="w-2.5 h-2.5 rounded-full bg-[#00FF66]/80" />
-          </div>
-          <span className="text-xs font-mono font-medium text-zinc-400">
-            beastmq-cluster-mesh :: topology: <span className="text-zinc-200">postgres-skip-locked</span>
+    <div className="w-full rounded-2xl border border-white/[0.1] bg-[#0A0D12]/95 backdrop-blur-xl shadow-[0_20px_70px_rgba(0,0,0,0.8)] overflow-hidden">
+      
+      {/* Top Bar: Live interactive scenario picker */}
+      <div className="p-4 sm:p-5 border-b border-white/[0.08] bg-black/40 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-[#00FF66] animate-pulse" />
+          <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+            Interactive Playground: See What BeastMQ Does
           </span>
         </div>
 
-        {/* Live Metrics Counters */}
-        <div className="flex items-center gap-4 text-[11px] font-mono">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#00FF66]/10 border border-[#00FF66]/20 text-[#00FF66]">
-            <Activity className="w-3.5 h-3.5 animate-pulse" />
-            <span className="font-bold">{throughput.toLocaleString()}</span>
-            <span className="text-[10px] text-zinc-400">ops/s [simulated]</span>
+        {/* Scenario Buttons */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {SCENARIOS.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => runSimulation(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-150 ${
+                selectedScenario.id === s.id
+                  ? "bg-[#00FF66]/15 text-[#00FF66] border border-[#00FF66]/40 font-bold shadow-[0_0_15px_rgba(0,255,102,0.15)]"
+                  : "bg-white/[0.03] text-zinc-400 border border-white/[0.06] hover:text-white hover:border-white/[0.15]"
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Visual: 3 Concrete Physical Stages */}
+      <div className="p-6 sm:p-8 bg-grid-pattern relative">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 relative z-10">
+          
+          {/* STAGE 1: AI Agent or Client */}
+          <div className={`p-5 rounded-xl border transition-all duration-300 ${
+            stage === "enqueuing"
+              ? "border-[#00FF66] bg-[#00FF66]/5 shadow-[0_0_25px_rgba(0,255,102,0.15)]"
+              : "border-white/[0.08] bg-[#0E1219]/90"
+          }`}>
+            <div className="flex items-center justify-between text-xs font-mono mb-3">
+              <span className="text-zinc-400 uppercase tracking-wider text-[10px]">STEP 1: UNBLOCK AGENT</span>
+              <span className="px-2 py-0.5 rounded bg-white/[0.05] text-zinc-300 text-[10px]">
+                &lt; 10ms
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="p-2 rounded-lg bg-[#00FF66]/10 text-[#00FF66]">
+                <Terminal className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white font-mono">Agent Enqueues Task</h4>
+                <span className="text-[11px] text-zinc-400 font-sans">Turn stays completely responsive</span>
+              </div>
+            </div>
+
+            <div className="mt-3 p-2.5 rounded-lg bg-black/50 border border-white/[0.05] font-mono text-[11px] text-zinc-300 space-y-1">
+              <div className="text-zinc-500">// Zero turn timeout:</div>
+              <div className="text-emerald-400">await beastmq.enqueue(&#123;</div>
+              <div className="pl-3 text-zinc-300">type: &apos;{selectedScenario.type}&apos;,</div>
+              <div className="pl-3 text-zinc-300">role: &apos;{selectedScenario.role}&apos;</div>
+              <div className="text-emerald-400">&#125;)</div>
+            </div>
           </div>
-          <div className="hidden sm:flex items-center gap-1.5 text-zinc-400">
-            <span>Latency:</span>
-            <span className="text-zinc-200">{latency}ms</span>
+
+          {/* STAGE 2: PostgreSQL ACID Storage */}
+          <div className={`p-5 rounded-xl border transition-all duration-300 ${
+            stage === "claimed"
+              ? "border-[#00FF66] bg-[#00FF66]/5 shadow-[0_0_25px_rgba(0,255,102,0.15)]"
+              : "border-white/[0.08] bg-[#0E1219]/90"
+          }`}>
+            <div className="flex items-center justify-between text-xs font-mono mb-3">
+              <span className="text-zinc-400 uppercase tracking-wider text-[10px]">STEP 2: POSTGRES LOCK</span>
+              <span className="px-2 py-0.5 rounded bg-[#00FF66]/10 text-[#00FF66] text-[10px] font-bold">
+                ZERO REDIS
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                <Database className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white font-mono">Atomic SKIP LOCKED</h4>
+                <span className="text-[11px] text-zinc-400 font-sans">No dual-writes, 10s lease heartbeats</span>
+              </div>
+            </div>
+
+            <div className="mt-3 p-2.5 rounded-lg bg-black/50 border border-white/[0.05] font-mono text-[11px] text-zinc-300 space-y-1">
+              <div className="flex justify-between text-zinc-400">
+                <span>Job ID:</span>
+                <span className="text-white font-bold">{activeJobId}</span>
+              </div>
+              <div className="flex justify-between text-zinc-400">
+                <span>Status:</span>
+                <span className={stage === "completed" ? "text-[#00FF66]" : "text-yellow-400"}>
+                  {stage === "completed" ? "completed" : stage === "claimed" ? "running" : "pending"}
+                </span>
+              </div>
+              <div className="flex justify-between text-zinc-400">
+                <span>Lease:</span>
+                <span className="text-zinc-200">300s (Heartbeat OK)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* STAGE 3: Background Worker Execution */}
+          <div className={`p-5 rounded-xl border transition-all duration-300 ${
+            stage === "completed"
+              ? "border-[#00FF66] bg-[#00FF66]/5 shadow-[0_0_25px_rgba(0,255,102,0.15)]"
+              : "border-white/[0.08] bg-[#0E1219]/90"
+          }`}>
+            <div className="flex items-center justify-between text-xs font-mono mb-3">
+              <span className="text-zinc-400 uppercase tracking-wider text-[10px]">STEP 3: EXECUTE & PERSIST</span>
+              <span className="px-2 py-0.5 rounded bg-white/[0.05] text-[#00FF66] text-[10px] font-bold">
+                ACID DURABLE
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="p-2 rounded-lg bg-[#00FF66]/10 text-[#00FF66]">
+                <Server className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white font-mono">Worker Saves Result</h4>
+                <span className="text-[11px] text-zinc-400 font-sans">JSONB stored directly in DB</span>
+              </div>
+            </div>
+
+            <div className="mt-3 p-2.5 rounded-lg bg-black/50 border border-white/[0.05] font-mono text-[11px] text-zinc-300 overflow-x-auto">
+              <div className="text-zinc-500">// Result payload:</div>
+              <pre className="text-emerald-300 text-[10px] leading-tight">
+                {JSON.stringify(selectedScenario.output, null, 2)}
+              </pre>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Explanation callout for why this matters */}
+        <div className="mt-5 p-3.5 rounded-xl bg-black/60 border border-white/[0.06] flex items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex items-center gap-2 text-zinc-300">
+            <span className="text-[#00FF66] font-bold">WHY THIS MATTERS:</span>
+            <span className="text-zinc-400 font-sans">{selectedScenario.why}</span>
           </div>
           <button
-            onClick={triggerBurst}
-            disabled={burstActive}
-            className="flex items-center gap-1 px-2.5 py-1 rounded bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] text-zinc-300 hover:text-white transition-all text-[11px] active:scale-95"
-            title="Inject test burst"
+            onClick={() => runSimulation(selectedScenario)}
+            className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#00FF66] text-black font-bold text-xs hover:bg-[#4EFE82] transition-colors shrink-0"
           >
-            <Zap className={`w-3 h-3 ${burstActive ? "text-[#00FF66]" : "text-yellow-400"}`} />
-            <span>{burstActive ? "Bursting..." : "Simulate Burst"}</span>
+            <Play className="w-3 h-3 fill-current" />
+            <span>Re-run Test</span>
           </button>
         </div>
       </div>
 
-      {/* Main Interactive Diagram Canvas */}
-      <div className="relative p-6 sm:p-10 min-h-[380px] flex items-center justify-center bg-grid-pattern overflow-x-auto">
-        {/* Ambient Glows */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-[#00FF66]/10 blur-[100px] pointer-events-none" />
-
-        <div className="min-w-[680px] w-full max-w-4xl grid grid-cols-12 items-center gap-4 sm:gap-6 relative z-10">
-          
-          {/* COLUMN 1: PRODUCERS (Left, cols 1-3) */}
-          <div className="col-span-3 space-y-3.5">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-              Event Producers
-            </div>
-
-            {/* Producer Node 1 */}
-            <div className="group p-3 rounded-lg border border-white/[0.08] bg-[#0E1219]/80 hover:border-white/[0.2] transition-all">
-              <div className="flex items-center justify-between text-xs font-mono mb-1">
-                <span className="text-zinc-200 font-semibold">agent.command</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/[0.06] text-zinc-400">SHELL</span>
-              </div>
-              <p className="text-[10px] text-zinc-500 font-mono">Offloads CLI turn-timeout</p>
-            </div>
-
-            {/* Producer Node 2 */}
-            <div className="group p-3 rounded-lg border border-white/[0.08] bg-[#0E1219]/80 hover:border-white/[0.2] transition-all">
-              <div className="flex items-center justify-between text-xs font-mono mb-1">
-                <span className="text-zinc-200 font-semibold">agent.http</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/[0.06] text-zinc-400">FETCH</span>
-              </div>
-              <p className="text-[10px] text-zinc-500 font-mono">Async scraping & webhooks</p>
-            </div>
-
-            {/* Producer Node 3 */}
-            <div className="group p-3 rounded-lg border border-white/[0.08] bg-[#0E1219]/80 hover:border-white/[0.2] transition-all">
-              <div className="flex items-center justify-between text-xs font-mono mb-1">
-                <span className="text-zinc-200 font-semibold">Supervisor LLM</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#00FF66]/10 text-[#00FF66]">FAN-OUT</span>
-              </div>
-              <p className="text-[10px] text-zinc-500 font-mono">Parent job + traceId</p>
-            </div>
-          </div>
-
-          {/* SVG Connection Lines Left -> Center */}
-          <div className="col-span-1 h-44 relative flex items-center justify-center">
-            <svg className="w-full h-full" viewBox="0 0 100 160" preserveAspectRatio="none">
-              <line x1="0" y1="20" x2="100" y2="80" stroke="#334155" strokeWidth="1.5" strokeDasharray="3 3" />
-              <line x1="0" y1="80" x2="100" y2="80" stroke="#00FF66" strokeWidth="2" strokeOpacity="0.8" />
-              <line x1="0" y1="140" x2="100" y2="80" stroke="#334155" strokeWidth="1.5" strokeDasharray="3 3" />
-
-              {/* Animated Packets Moving In */}
-              {packets.filter((p) => p.progress <= 0.5).map((p) => {
-                const prog = p.progress * 2;
-                const startY = p.source === 0 ? 20 : p.source === 1 ? 80 : 140;
-                const currentY = startY + (80 - startY) * prog;
-                return (
-                  <circle
-                    key={p.id}
-                    cx={prog * 100}
-                    cy={currentY}
-                    r="4"
-                    fill={p.color}
-                    className="drop-shadow-[0_0_8px_#00FF66]"
-                  />
-                );
-              })}
-            </svg>
-          </div>
-
-          {/* COLUMN 2: CENTRAL BEASTMQ BROKER (Center, cols 5-8) */}
-          <div className="col-span-4 relative group">
-            {/* Glowing Border Card */}
-            <div className="relative p-5 sm:p-6 rounded-2xl border-2 border-[#00FF66]/50 bg-gradient-to-b from-[#0F1722] to-[#0A0D14] shadow-[0_0_50px_rgba(0,255,102,0.15)] text-center">
-              
-              {/* Badge */}
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#00FF66]/30 bg-[#00FF66]/10 text-[10px] font-mono text-[#00FF66] mb-3">
-                <Database className="w-3 h-3" />
-                <span>POSTGRESQL SKIP LOCKED</span>
-              </div>
-
-              {/* Central Geometric Beast Icon */}
-              <div className="flex justify-center mb-3">
-                <div className="p-3.5 rounded-xl border border-[#00FF66]/40 bg-[#08090B] shadow-[0_0_30px_rgba(0,255,102,0.25)]">
-                  <BeastLogo size={42} glow={true} />
-                </div>
-              </div>
-
-              <h3 className="text-base font-mono font-bold text-white tracking-wider">
-                BeastMQ Engine
-              </h3>
-              <p className="text-[11px] font-mono text-zinc-400 mt-1">
-                Zero Redis · Heartbeat Lease · Strict Durability
-              </p>
-
-              {/* State Pills */}
-              <div className="mt-4 pt-3 border-t border-white/[0.08] grid grid-cols-2 gap-2 text-[10px] font-mono">
-                <div className="p-1.5 rounded bg-white/[0.03] border border-white/[0.05] text-left">
-                  <span className="text-zinc-500 block">Queue Mode</span>
-                  <span className="text-[#00FF66] font-semibold">Priority + Fifo</span>
-                </div>
-                <div className="p-1.5 rounded bg-white/[0.03] border border-white/[0.05] text-left">
-                  <span className="text-zinc-500 block">Idempotency</span>
-                  <span className="text-emerald-400 font-semibold">Key-Locked</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* SVG Connection Lines Center -> Right */}
-          <div className="col-span-1 h-44 relative flex items-center justify-center">
-            <svg className="w-full h-full" viewBox="0 0 100 160" preserveAspectRatio="none">
-              <line x1="0" y1="80" x2="100" y2="15" stroke="#334155" strokeWidth="1.5" strokeDasharray="3 3" />
-              <line x1="0" y1="80" x2="100" y2="60" stroke="#00FF66" strokeWidth="2" strokeOpacity="0.8" />
-              <line x1="0" y1="80" x2="100" y2="105" stroke="#00FF66" strokeWidth="2" strokeOpacity="0.8" />
-              <line x1="0" y1="80" x2="100" y2="150" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="3 3" strokeOpacity="0.5" />
-
-              {/* Animated Packets Moving Out to Consumers */}
-              {packets.filter((p) => p.progress > 0.5).map((p) => {
-                const prog = (p.progress - 0.5) * 2;
-                const endY = p.target === 0 ? 15 : p.target === 1 ? 60 : p.target === 2 ? 105 : 150;
-                const currentY = 80 + (endY - 80) * prog;
-                return (
-                  <circle
-                    key={p.id}
-                    cx={prog * 100}
-                    cy={currentY}
-                    r="4"
-                    fill={p.color}
-                    className="drop-shadow-[0_0_8px_#00FF66]"
-                  />
-                );
-              })}
-            </svg>
-          </div>
-
-          {/* COLUMN 3: CONSUMERS & WORKERS (Right, cols 10-12) */}
-          <div className="col-span-3 space-y-2.5">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00FF66]" />
-              Worker Pool & DLQ
-            </div>
-
-            {/* Consumer 1 */}
-            <div className="p-2.5 rounded-lg border border-white/[0.08] bg-[#0E1219]/80 text-xs font-mono">
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-200">Worker Fiber #1</span>
-                <span className="w-2 h-2 rounded-full bg-[#00FF66] animate-pulse" />
-              </div>
-              <span className="text-[10px] text-zinc-500">Lease: active (heartbeat)</span>
-            </div>
-
-            {/* Consumer 2 */}
-            <div className="p-2.5 rounded-lg border border-white/[0.08] bg-[#0E1219]/80 text-xs font-mono">
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-200">Worker Fiber #2</span>
-                <span className="w-2 h-2 rounded-full bg-[#00FF66] animate-pulse" />
-              </div>
-              <span className="text-[10px] text-zinc-500">Executing shell task</span>
-            </div>
-
-            {/* Consumer 3: Subagent */}
-            <div className="p-2.5 rounded-lg border border-white/[0.08] bg-[#0E1219]/80 text-xs font-mono">
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-200">Subagent Fan-In</span>
-                <span className="text-[10px] text-[#00FF66]">COMPLETED</span>
-              </div>
-              <span className="text-[10px] text-zinc-500">Saved to jobs.result</span>
-            </div>
-
-            {/* DLQ node */}
-            <div className="p-2.5 rounded-lg border border-red-500/20 bg-red-950/20 text-xs font-mono">
-              <div className="flex items-center justify-between">
-                <span className="text-red-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
-                  <span>dead_jobs DLQ</span>
-                </span>
-                <span className="text-[10px] text-zinc-500">Replayable</span>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-      </div>
-
-      {/* Bottom Summary Bar */}
-      <div className="px-6 py-3 border-t border-white/[0.06] bg-black/40 flex flex-wrap items-center justify-between gap-4 text-xs font-mono text-zinc-400">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 text-zinc-300">
-            <ShieldCheck className="w-4 h-4 text-[#00FF66]" />
-            Crash-Proof: Worker death releases lease automatically
-          </span>
-          <span className="hidden md:inline text-zinc-600">|</span>
-          <span className="hidden md:inline text-zinc-400">
-            Processed: <strong className="text-white">{totalProcessed.toLocaleString()}</strong> events
-          </span>
-        </div>
-        <div className="text-[11px] text-zinc-500">
-          Simulation running on PostgreSQL engine abstraction
-        </div>
-      </div>
     </div>
   );
 }

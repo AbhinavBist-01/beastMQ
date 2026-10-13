@@ -1,6 +1,7 @@
 import React from "react";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
+import { ProblemSolution } from "@/components/ProblemSolution";
 import { MetricsStrip } from "@/components/MetricsStrip";
 import { FeatureSection } from "@/components/FeatureSection";
 import { ArchitectureDiagram } from "@/components/ArchitectureDiagram";
@@ -17,29 +18,32 @@ export default function Home() {
 
       {/* Main Page Content */}
       <main className="flex-1">
-        {/* 1. Hero Section with Prominent npx skills add () command and animated message stream */}
+        {/* 1. Hero Section with Live Interactive Job Engine Sandbox */}
         <HeroSection />
 
-        {/* 2. Technical Metrics Strip */}
+        {/* 2. Before vs. After: Why AI Agents & Apps Need BeastMQ */}
+        <ProblemSolution />
+
+        {/* 3. Technical Metrics Strip */}
         <MetricsStrip />
 
-        {/* 3. Core Features with Custom Mini-Visuals */}
+        {/* 4. Core Capabilities & Primitives */}
         <FeatureSection />
 
-        {/* 4. Horizontal Architecture Flow & Inspection */}
+        {/* 5. Horizontal Architecture Topology & Lifecycle */}
         <ArchitectureDiagram />
 
-        {/* 5. Code Section with TypeScript SDK & Interactive Terminal Simulator */}
+        {/* 6. Code Section with TypeScript SDK & Interactive Terminal */}
         <CodeShowcase />
 
-        {/* 6. Developer Experience & CLI Workflows */}
+        {/* 7. Developer Experience & CLI Workflows */}
         <DeveloperExperience />
 
-        {/* 7. Final Closing CTA */}
+        {/* 8. Final Closing Call to Action */}
         <FinalCTA />
       </main>
 
-      {/* 8. Footer */}
+      {/* 9. Footer */}
       <Footer />
     </div>
   );
