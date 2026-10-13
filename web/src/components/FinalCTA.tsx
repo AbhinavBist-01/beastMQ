@@ -28,11 +28,9 @@ export function FinalCTA() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
         {/* Headline */}
-
-        {/* Headline */}
         <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white font-sans max-w-3xl mx-auto leading-tight">
           Your events. Your infrastructure. <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-[#00FF66]">
+          <span className="text-zinc-400">
             Your rules.
           </span>
         </h2>

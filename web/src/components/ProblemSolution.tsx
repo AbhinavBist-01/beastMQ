@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, X, Shield, Zap, Database, Cpu, Terminal, Bot } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 export function ProblemSolution() {
   const rows = [
@@ -60,12 +60,14 @@ export function ProblemSolution() {
   ];
 
   return (
-    <section id="problem-solution" className="py-20 md:py-28 border-t border-white/[0.08] relative">
+    <section
+      id="problem-solution"
+      className="py-20 md:py-28 border-t border-white/[0.08] relative"
+    >
       {/* Subtle radial glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[300px] bg-[#00FF66]/[0.04] blur-[140px] pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
         {/* Section Header */}
         <div className="max-w-3xl mb-12 space-y-3">
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-sans">
@@ -73,7 +75,9 @@ export function ProblemSolution() {
             <span className="text-zinc-400">in traditional queue systems.</span>
           </h2>
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl font-normal">
-            Traditional queues were designed for web servers in 2014. BeastMQ is engineered for autonomous agents, heavy subtasks, and PostgreSQL durability.
+            Traditional queues were designed for web servers in 2014. BeastMQ is
+            engineered for autonomous agents, heavy subtasks, and PostgreSQL
+            durability.
           </p>
         </div>
 
@@ -124,7 +128,9 @@ export function ProblemSolution() {
                         <span className="p-1 rounded bg-red-500/10 text-red-400 mt-0.5 shrink-0">
                           <X className="w-3.5 h-3.5" />
                         </span>
-                        <span className="leading-relaxed">{row.traditional}</span>
+                        <span className="leading-relaxed">
+                          {row.traditional}
+                        </span>
                       </div>
                     </td>
 
@@ -135,7 +141,9 @@ export function ProblemSolution() {
                           <Check className="w-3.5 h-3.5 stroke-[3]" />
                         </span>
                         <div>
-                          <span className="text-white leading-relaxed">{row.beastmq}</span>
+                          <span className="text-white leading-relaxed">
+                            {row.beastmq}
+                          </span>
                           <span className="inline-block ml-2 text-[10px] font-mono font-semibold px-2 py-0.2 rounded bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/20">
                             {row.highlight}
                           </span>
@@ -152,14 +160,14 @@ export function ProblemSolution() {
           <div className="px-6 py-3.5 border-t border-white/[0.08] bg-black/50 flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-zinc-400">
             <span className="flex items-center gap-2 text-zinc-300">
               <span className="w-2 h-2 rounded-full bg-[#00FF66]" />
-              Zero Redis · Native PostgreSQL FOR UPDATE SKIP LOCKED · Turn-Timeout Shield
+              Zero Redis · Native PostgreSQL FOR UPDATE SKIP LOCKED ·
+              Turn-Timeout Shield
             </span>
             <span className="text-[11px] text-zinc-500">
               Certified Open Standard: skills.sh
             </span>
           </div>
         </div>
-
       </div>
     </section>
   );

@@ -26,13 +26,12 @@ export function Navbar() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        
         {/* Left: Clean Brand Wordmark */}
         <Link
           href="/"
           className="text-base font-mono font-extrabold tracking-tight text-white hover:text-[#00FF66] transition-colors outline-none"
         >
-          beast<span className="text-[#00FF66]">MQ</span>
+          beast<span className="text-[#166d39]">MQ</span>
         </Link>
 
         {/* Center: Refined Navigation Links */}
@@ -53,7 +52,7 @@ export function Navbar() {
             href="#code"
             className="hover:text-white transition-colors duration-150 py-1"
           >
-            SDK & Spec
+            SDK
           </a>
           <a
             href="#developer-experience"
@@ -83,7 +82,11 @@ export function Navbar() {
             className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors"
             aria-label="Toggle Navigation Menu"
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileMenuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
           </button>
         </div>
       </div>
@@ -111,7 +114,7 @@ export function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
               className="py-1 hover:text-[#00FF66] transition-colors"
             >
-              SDK & Spec
+              SDK
             </a>
             <a
               href="#developer-experience"
@@ -127,7 +130,7 @@ export function Navbar() {
               className="pt-2 border-t border-white/[0.06] flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
             >
               <GithubIcon className="w-4 h-4" />
-              <span>GitHub Repository</span>
+              <span>GitHub </span>
             </a>
           </nav>
         </div>

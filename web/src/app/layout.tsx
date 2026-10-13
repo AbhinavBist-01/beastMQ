@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "BeastMQ — Move Events at Beast Speed | Agent-Native Task Queue & Distributed Streaming",
+  title: "BeastMQ ",
   description:
     "PostgreSQL-backed high-performance message queue, distributed task orchestration engine, and turn-timeout shield for AI agents. Zero Redis, strict ACID durability.",
   keywords: [
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     "beastmq",
     "skills.sh",
   ],
-  authors: [{ name: "BeastMQ Team" }],
+  authors: [{ name: "Abhinav Bist" }],
 };
 
 export default function RootLayout({

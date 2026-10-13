@@ -2,11 +2,15 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { Activity, Database, Server, Zap, ShieldCheck } from "lucide-react";
+import { Activity, Database, ShieldCheck } from "lucide-react";
 
 export function Hero3DStream() {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [metrics, setMetrics] = useState({ ops: 15420, latency: 3.8, activeWorkers: 5 });
+  const [metrics, setMetrics] = useState({
+    ops: 15420,
+    latency: 3.8,
+    activeWorkers: 5,
+  });
 
   useEffect(() => {
     const container = mountRef.current;
@@ -69,16 +73,44 @@ export function Hero3DStream() {
 
     // 3. Curved Stream Paths (Left Producer -> Center Core -> Right Worker)
     const curvePointsLeft: THREE.Vector3[][] = [
-      [new THREE.Vector3(-14, 3, 0), new THREE.Vector3(-7, 2, 2), new THREE.Vector3(0, 0, 0)],
-      [new THREE.Vector3(-14, 0, -2), new THREE.Vector3(-6, 0, 1), new THREE.Vector3(0, 0, 0)],
-      [new THREE.Vector3(-14, -3, 1), new THREE.Vector3(-7, -2, -1), new THREE.Vector3(0, 0, 0)],
+      [
+        new THREE.Vector3(-14, 3, 0),
+        new THREE.Vector3(-7, 2, 2),
+        new THREE.Vector3(0, 0, 0),
+      ],
+      [
+        new THREE.Vector3(-14, 0, -2),
+        new THREE.Vector3(-6, 0, 1),
+        new THREE.Vector3(0, 0, 0),
+      ],
+      [
+        new THREE.Vector3(-14, -3, 1),
+        new THREE.Vector3(-7, -2, -1),
+        new THREE.Vector3(0, 0, 0),
+      ],
     ];
 
     const curvePointsRight: THREE.Vector3[][] = [
-      [new THREE.Vector3(0, 0, 0), new THREE.Vector3(7, 3, 2), new THREE.Vector3(14, 4, 0)],
-      [new THREE.Vector3(0, 0, 0), new THREE.Vector3(6, 1, -1), new THREE.Vector3(14, 1, -2)],
-      [new THREE.Vector3(0, 0, 0), new THREE.Vector3(7, -2, 1), new THREE.Vector3(14, -2, 1)],
-      [new THREE.Vector3(0, 0, 0), new THREE.Vector3(8, -4, -2), new THREE.Vector3(14, -5, 0)],
+      [
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(7, 3, 2),
+        new THREE.Vector3(14, 4, 0),
+      ],
+      [
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(6, 1, -1),
+        new THREE.Vector3(14, 1, -2),
+      ],
+      [
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(7, -2, 1),
+        new THREE.Vector3(14, -2, 1),
+      ],
+      [
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(8, -4, -2),
+        new THREE.Vector3(14, -5, 0),
+      ],
     ];
 
     // Render guide tube lines
@@ -102,11 +134,16 @@ export function Hero3DStream() {
     const positions = new Float32Array(particleCount * 3);
     const colors = new Float32Array(particleCount * 3);
 
-    const leftCurves = curvePointsLeft.map((pts) => new THREE.CatmullRomCurve3(pts));
-    const rightCurves = curvePointsRight.map((pts) => new THREE.CatmullRomCurve3(pts));
+    const leftCurves = curvePointsLeft.map(
+      (pts) => new THREE.CatmullRomCurve3(pts),
+    );
+    const rightCurves = curvePointsRight.map(
+      (pts) => new THREE.CatmullRomCurve3(pts),
+    );
     const allCurves = [...leftCurves, ...rightCurves];
 
-    const particleProgress: { curveIdx: number; t: number; speed: number }[] = [];
+    const particleProgress: { curveIdx: number; t: number; speed: number }[] =
+      [];
 
     for (let i = 0; i < particleCount; i++) {
       const curveIdx = Math.floor(Math.random() * allCurves.length);
@@ -126,7 +163,10 @@ export function Hero3DStream() {
       colors[i * 3 + 2] = isLead ? 0.8 : 0.4;
     }
 
-    particleGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    particleGeo.setAttribute(
+      "position",
+      new THREE.BufferAttribute(positions, 3),
+    );
     particleGeo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
     const particleMat = new THREE.PointsMaterial({
@@ -181,7 +221,9 @@ export function Hero3DStream() {
       coreLight.intensity = 2.5 + Math.sin(clock.getElapsedTime() * 4) * 0.8;
 
       // Advance particles along curves
-      const posAttr = particleGeo.getAttribute("position") as THREE.BufferAttribute;
+      const posAttr = particleGeo.getAttribute(
+        "position",
+      ) as THREE.BufferAttribute;
       const posArr = posAttr.array as Float32Array;
 
       for (let i = 0; i < particleCount; i++) {
@@ -239,7 +281,6 @@ export function Hero3DStream() {
 
   return (
     <div className="relative w-full rounded-2xl border border-white/[0.08] bg-[#0A0D12]/90 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.85)] overflow-hidden">
-      
       {/* Top Telemetry Header Bar */}
       <div className="flex flex-wrap items-center justify-between px-5 py-3.5 border-b border-white/[0.06] bg-black/40 gap-3 z-20 relative">
         <div className="flex items-center gap-3">
@@ -249,7 +290,8 @@ export function Hero3DStream() {
             <span className="w-2.5 h-2.5 rounded-full bg-[#00FF66]/70" />
           </div>
           <span className="text-xs font-mono font-medium text-zinc-300">
-            3D Distributed Mesh :: <span className="text-[#00FF66]">PostgreSQL SKIP LOCKED</span>
+            3D Distributed Mesh ::{" "}
+            <span className="text-[#00FF66]">PostgreSQL SKIP LOCKED</span>
           </span>
         </div>
 
@@ -262,23 +304,29 @@ export function Hero3DStream() {
           </div>
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/[0.03] border border-white/[0.06] text-zinc-300">
             <span>Latency:</span>
-            <span className="text-[#00FF66] font-bold">{metrics.latency}ms</span>
+            <span className="text-[#00FF66] font-bold">
+              {metrics.latency}ms
+            </span>
           </div>
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/[0.03] border border-white/[0.06] text-zinc-300">
             <span>Fibers:</span>
-            <span className="text-zinc-100 font-bold">{metrics.activeWorkers} concurrent</span>
+            <span className="text-zinc-100 font-bold">
+              {metrics.activeWorkers} concurrent
+            </span>
           </div>
         </div>
       </div>
 
       {/* WebGL 3D Canvas Container */}
       <div className="relative w-full h-[420px] sm:h-[480px] bg-grid-pattern overflow-hidden">
-        
         {/* Three.js canvas mount point */}
-        <div ref={mountRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing" />
+        <div
+          ref={mountRef}
+          className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"
+        />
 
         {/* Overlay Glass Badges (Floating in 3D Space) */}
-        
+
         {/* Left Badge: Producers */}
         <div className="absolute top-6 left-6 pointer-events-none hidden sm:block">
           <div className="p-3.5 rounded-xl border border-white/[0.1] bg-[#0E1219]/80 backdrop-blur-md shadow-xl text-xs font-mono space-y-1.5 max-w-[200px]">
@@ -288,7 +336,8 @@ export function Hero3DStream() {
             </div>
             <div className="text-white font-bold">AI Coding Agents</div>
             <p className="text-[10px] text-zinc-400 font-sans leading-tight">
-              Claude Code, Cursor, Antigravity offload &gt;15s commands instantly
+              Claude Code, Cursor, Antigravity offload &gt;15s commands
+              instantly
             </p>
           </div>
         </div>
@@ -297,9 +346,7 @@ export function Hero3DStream() {
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none">
           <div className="px-4 py-2 rounded-xl border border-[#00FF66]/30 bg-[#0A0D12]/90 backdrop-blur-md shadow-[0_0_30px_rgba(0,255,102,0.15)] flex items-center gap-3 text-xs font-mono">
             <Database className="w-4 h-4 text-[#00FF66]" />
-            <span className="text-zinc-200">
-              PostgreSQL <strong className="text-[#00FF66]">FOR UPDATE SKIP LOCKED</strong>
-            </span>
+
             <span className="text-zinc-500 text-[10px]">Zero Redis</span>
           </div>
         </div>
@@ -317,7 +364,6 @@ export function Hero3DStream() {
             </p>
           </div>
         </div>
-
       </div>
 
       {/* Footer Info Rail */}
@@ -330,7 +376,6 @@ export function Hero3DStream() {
           WebGL 60 FPS · Hardware Accelerated
         </span>
       </div>
-
     </div>
   );
 }
