@@ -199,7 +199,7 @@ export function FeatureSection() {
               <div className="space-y-1 text-[11px] text-zinc-400">
                 <p className="flex items-center gap-2">
                   <span className="text-[#00FF66]">$</span>
-                  <span>npx skills add beastmq</span>
+                  <span>npx skills add AbhinavBist-01/beastmq</span>
                 </p>
                 <p className="flex items-center gap-2">
                   <span className="text-[#00FF66]">$</span>

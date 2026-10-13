@@ -1,13 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
-import { BeastLogo } from "./BeastLogo";
-import { Database, ArrowRight, ShieldAlert, RotateCcw, CheckCircle2, Server, Terminal, Radio } from "lucide-react";
+import { useState } from "react";
+import {
+  Database,
+  ArrowRight,
+  ShieldAlert,
+  RotateCcw,
+  CheckCircle2,
+  Server,
+  Terminal,
+  Radio,
+} from "lucide-react";
 
 export function ArchitectureDiagram() {
   const [selectedNode, setSelectedNode] = useState<string>("broker");
 
-  const nodeDetails: Record<string, { title: string; subtitle: string; desc: string; sql?: string }> = {
+  const nodeDetails: Record<
+    string,
+    { title: string; subtitle: string; desc: string; sql?: string }
+  > = {
     producers: {
       title: "Event & Task Producers",
       subtitle: "Autonomous Agents, Webhook Ingest, API Endpoints",
@@ -41,9 +52,11 @@ export function ArchitectureDiagram() {
   };
 
   return (
-    <section id="architecture" className="py-24 md:py-32 border-t border-white/[0.08] relative">
+    <section
+      id="architecture"
+      className="py-24 md:py-32 border-t border-white/[0.08] relative"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
         {/* Section Heading */}
         <div className="max-w-3xl mb-16 space-y-3">
           <div className="inline-flex items-center gap-2 text-xs font-mono tracking-widest text-[#00FF66] uppercase">
@@ -54,16 +67,15 @@ export function ArchitectureDiagram() {
             From event to execution.
           </h2>
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl font-normal">
-            A resilient pipeline combining PostgreSQL row-level locks, distributed idempotency, and abort-safe execution fibers.
+            A resilient pipeline combining PostgreSQL row-level locks,
+            distributed idempotency, and abort-safe execution fibers.
           </p>
         </div>
 
         {/* Horizontal Architecture Diagram Box */}
         <div className="p-6 sm:p-10 rounded-2xl border border-white/[0.08] bg-[#0A0D12] shadow-[0_10px_40px_rgba(0,0,0,0.6)]">
-          
           <div className="overflow-x-auto pb-4">
             <div className="min-w-[880px] grid grid-cols-12 gap-4 items-center relative py-6">
-              
               {/* STAGE 1: PRODUCERS (Cols 1-3) */}
               <button
                 onClick={() => setSelectedNode("producers")}
@@ -93,7 +105,9 @@ export function ArchitectureDiagram() {
 
               {/* Arrow 1 */}
               <div className="col-span-1 flex flex-col items-center justify-center text-zinc-600">
-                <span className="text-[9px] font-mono text-zinc-500 uppercase">ENQUEUE</span>
+                <span className="text-[9px] font-mono text-zinc-500 uppercase">
+                  ENQUEUE
+                </span>
                 <ArrowRight className="w-5 h-5 text-[#00FF66]/80 animate-pulse" />
               </div>
 
@@ -110,7 +124,6 @@ export function ArchitectureDiagram() {
                   <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
                     STAGE 02
                   </span>
-                  <BeastLogo size={18} glow={false} />
                 </div>
                 <div className="text-sm font-mono font-bold text-white mb-1 flex items-center gap-1.5">
                   <span>2. BeastMQ Broker</span>
@@ -126,7 +139,9 @@ export function ArchitectureDiagram() {
 
               {/* Arrow 2 */}
               <div className="col-span-1 flex flex-col items-center justify-center text-zinc-600">
-                <span className="text-[9px] font-mono text-zinc-500 uppercase">CLAIM</span>
+                <span className="text-[9px] font-mono text-zinc-500 uppercase">
+                  CLAIM
+                </span>
                 <ArrowRight className="w-5 h-5 text-[#00FF66]/80 animate-pulse" />
               </div>
 
@@ -156,7 +171,6 @@ export function ArchitectureDiagram() {
                   <span>10s Heartbeat Lease</span>
                 </div>
               </button>
-
             </div>
 
             {/* DLQ and Retry Path Bottom Rail */}
@@ -164,7 +178,8 @@ export function ArchitectureDiagram() {
               <div className="flex items-center gap-3 text-xs font-mono text-zinc-400">
                 <RotateCcw className="w-4 h-4 text-yellow-400" />
                 <span>
-                  <strong className="text-zinc-200">Retry Path:</strong> Exponential backoff delay (1s · 2s · 4s · 8s)
+                  <strong className="text-zinc-200">Retry Path:</strong>{" "}
+                  Exponential backoff delay (1s · 2s · 4s · 8s)
                 </span>
               </div>
 
@@ -221,7 +236,9 @@ export function ArchitectureDiagram() {
               Produce — Services publish events
             </h4>
             <p className="text-sm text-zinc-400 font-sans leading-relaxed">
-              Applications or autonomous agents publish tasks with optional idempotency keys, priorities, and parent correlation IDs without needing a dedicated broker cluster.
+              Applications or autonomous agents publish tasks with optional
+              idempotency keys, priorities, and parent correlation IDs without
+              needing a dedicated broker cluster.
             </p>
           </div>
 
@@ -233,7 +250,9 @@ export function ArchitectureDiagram() {
               Route — BeastMQ directs messages
             </h4>
             <p className="text-sm text-zinc-400 font-sans leading-relaxed">
-              PostgreSQL handles locking and prioritization atomically. Active heartbeats extend leases, guaranteeing crash safety and preventing stale jobs from being abandoned.
+              PostgreSQL handles locking and prioritization atomically. Active
+              heartbeats extend leases, guaranteeing crash safety and preventing
+              stale jobs from being abandoned.
             </p>
           </div>
 
@@ -245,11 +264,13 @@ export function ArchitectureDiagram() {
               Consume — Workers process asynchronously
             </h4>
             <p className="text-sm text-zinc-400 font-sans leading-relaxed">
-              Worker fibers execute tasks with execution timeouts and abort signals. Structured outputs are persisted directly into the <code className="text-zinc-200">result</code> column for supervisor retrieval.
+              Worker fibers execute tasks with execution timeouts and abort
+              signals. Structured outputs are persisted directly into the{" "}
+              <code className="text-zinc-200">result</code> column for
+              supervisor retrieval.
             </p>
           </div>
         </div>
-
       </div>
     </section>
   );

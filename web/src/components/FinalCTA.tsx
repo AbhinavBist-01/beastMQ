@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { BeastLogo } from "./BeastLogo";
 import { Copy, Check, Terminal, ArrowRight, Sparkles } from "lucide-react";
 import { GithubIcon } from "./GithubIcon";
 
@@ -28,13 +27,7 @@ export function FinalCTA() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-        
-        {/* Beast Logo Badge */}
-        <div className="flex justify-center mb-6">
-          <div className="p-3 rounded-2xl border border-[#00FF66]/30 bg-[#0A0D12] shadow-[0_0_40px_rgba(0,255,102,0.2)]">
-            <BeastLogo size={48} glow={true} />
-          </div>
-        </div>
+        {/* Headline */}
 
         {/* Headline */}
         <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white font-sans max-w-3xl mx-auto leading-tight">
@@ -59,7 +52,7 @@ export function FinalCTA() {
           >
             <span className="flex items-center gap-2">
               <span className="text-[#00FF66] font-bold">$</span>
-              <span>npx skills add beastmq</span>
+              <span>npx skills add AbhinavBist-01/beastmq</span>
             </span>
             <span className="text-zinc-500 group-hover:text-[#00FF66] transition-colors ml-2">
               {copied ? <Check className="w-4 h-4 text-[#00FF66]" /> : <Copy className="w-4 h-4" />}
@@ -68,7 +61,7 @@ export function FinalCTA() {
 
           {/* GitHub CTA */}
           <a
-            href="https://github.com/abhinavbist/beastMQ"
+            href="https://github.com/AbhinavBist-01/beastMQ"
             target="_blank"
             rel="noreferrer"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-[#00FF66] hover:bg-[#4EFE82] text-black font-mono font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(0,255,102,0.3)] hover:shadow-[0_0_40px_rgba(0,255,102,0.5)] active:scale-95"

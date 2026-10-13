@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, Play, Terminal, Code2, Sparkles, RefreshCw } from "lucide-react";
+import { Copy, Check, Play, Terminal, RefreshCw } from "lucide-react";
 
 export function CodeShowcase() {
   const [activeTab, setActiveTab] = useState<"ts" | "agent" | "worker">("ts");
@@ -107,26 +107,40 @@ await worker.start();
     };
 
     setTerminalLogs(["[00:00.00] Initializing BeastMQ client..."]);
-    
+
     setTimeout(() => {
-      pushLog("[00:00.12] INSERT INTO jobs (type: 'agent.command', priority: 10) RETURNING id");
-      pushLog("[00:00.15] Job enqueued: e93d4a12-88ef-4172-8821-39efc7882190 (pending)");
+      pushLog(
+        "[00:00.12] INSERT INTO jobs (type: 'agent.command', priority: 10) RETURNING id",
+      );
+      pushLog(
+        "[00:00.15] Job enqueued: e93d4a12-88ef-4172-8821-39efc7882190 (pending)",
+      );
     }, 400);
 
     setTimeout(() => {
       pushLog("[00:00.45] Worker fiber #3: SELECT ... FOR UPDATE SKIP LOCKED");
-      pushLog("[00:00.48] Atomic claim secured by worker-fiber-3 (lease: 300s)");
+      pushLog(
+        "[00:00.48] Atomic claim secured by worker-fiber-3 (lease: 300s)",
+      );
     }, 1000);
 
     setTimeout(() => {
       pushLog("[00:01.10] Heartbeat renewal scheduled (interval: 10,000ms)");
-      pushLog("[00:01.85] Subprocess executed with AbortSignal watchdog active");
+      pushLog(
+        "[00:01.85] Subprocess executed with AbortSignal watchdog active",
+      );
     }, 1800);
 
     setTimeout(() => {
-      pushLog("[00:02.40] Command completed with exitCode: 0, duration: 1820ms");
-      pushLog("[00:02.44] UPDATE jobs SET status='completed', result={exitCode: 0, durationMs: 1820}");
-      pushLog("[00:02.50] Client resolved waitForJob() -> JSONB payload ready!");
+      pushLog(
+        "[00:02.40] Command completed with exitCode: 0, duration: 1820ms",
+      );
+      pushLog(
+        "[00:02.44] UPDATE jobs SET status='completed', result={exitCode: 0, durationMs: 1820}",
+      );
+      pushLog(
+        "[00:02.50] Client resolved waitForJob() -> JSONB payload ready!",
+      );
       setIsSimulating(false);
     }, 2800);
   };
@@ -134,7 +148,6 @@ await worker.start();
   return (
     <section id="code" className="py-24 md:py-32 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
         {/* Section Heading */}
         <div className="max-w-3xl mb-14 space-y-3">
           <div className="inline-flex items-center gap-2 text-xs font-mono tracking-widest text-[#00FF66] uppercase">
@@ -146,16 +159,16 @@ await worker.start();
             <span className="text-zinc-400">More building.</span>
           </h2>
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl font-normal">
-            Whether using the TypeScript SDK or calling the CLI directly inside an agent tool call, BeastMQ keeps syntax concise and state fully transparent.
+            Whether using the TypeScript SDK or calling the CLI directly inside
+            an agent tool call, BeastMQ keeps syntax concise and state fully
+            transparent.
           </p>
         </div>
 
         {/* Code & Terminal Dual Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          
           {/* Left: Code Editor Panel (Cols 1-7) */}
           <div className="lg:col-span-7 rounded-2xl border border-white/[0.08] bg-[#0A0D12] overflow-hidden flex flex-col shadow-[0_15px_50px_rgba(0,0,0,0.7)]">
-            
             {/* Editor Header Bar */}
             <div className="flex flex-wrap items-center justify-between px-4 py-3 border-b border-white/[0.08] bg-black/40 gap-2">
               <div className="flex items-center gap-2">
@@ -225,7 +238,6 @@ await worker.start();
 
           {/* Right: Live Interactive Terminal (Cols 8-12) */}
           <div className="lg:col-span-5 rounded-2xl border border-white/[0.08] bg-[#0A0D12] overflow-hidden flex flex-col shadow-[0_15px_50px_rgba(0,0,0,0.7)]">
-            
             {/* Terminal Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08] bg-black/40">
               <div className="flex items-center gap-2">
@@ -260,8 +272,12 @@ await worker.start();
               </div>
               {terminalLogs.map((log, index) => {
                 const isError = log.includes("Error");
-                const isSuccess = log.includes("completed") || log.includes("resolved");
-                const isSql = log.includes("SELECT") || log.includes("INSERT") || log.includes("UPDATE");
+                const isSuccess =
+                  log.includes("completed") || log.includes("resolved");
+                const isSql =
+                  log.includes("SELECT") ||
+                  log.includes("INSERT") ||
+                  log.includes("UPDATE");
                 return (
                   <div
                     key={index}
@@ -269,12 +285,12 @@ await worker.start();
                       isError
                         ? "text-red-400"
                         : isSuccess
-                        ? "text-[#00FF66] font-semibold"
-                        : isSql
-                        ? "text-cyan-300"
-                        : log.startsWith("//")
-                        ? "text-zinc-500 italic"
-                        : "text-zinc-300"
+                          ? "text-[#00FF66] font-semibold"
+                          : isSql
+                            ? "text-cyan-300"
+                            : log.startsWith("//")
+                              ? "text-zinc-500 italic"
+                              : "text-zinc-300"
                     }`}
                   >
                     {log}
@@ -292,9 +308,7 @@ await worker.start();
               <span className="text-zinc-500">PostgreSQL ACID WAL</span>
             </div>
           </div>
-
         </div>
-
       </div>
     </section>
   );

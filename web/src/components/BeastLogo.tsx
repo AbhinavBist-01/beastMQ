@@ -23,7 +23,6 @@ export function BeastLogo({ className = "", size = 28, glow = true }: BeastLogoP
         xmlns="http://www.w3.org/2000/svg"
         className="relative z-10 transition-transform duration-300 group-hover:scale-105"
       >
-        {/* Outer faceted geometric shield / beast silhouette */}
         <polygon
           points="16,2 29,8 26,24 16,30 6,24 3,8"
           fill="#0D1117"
@@ -31,7 +30,6 @@ export function BeastLogo({ className = "", size = 28, glow = true }: BeastLogoP
           strokeWidth="1.75"
           strokeLinejoin="round"
         />
-        {/* Beast Horns / Lightning Fangs */}
         <path
           d="M10 9L16 16L13 22"
           stroke="#00FF66"
@@ -46,9 +44,7 @@ export function BeastLogo({ className = "", size = 28, glow = true }: BeastLogoP
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {/* Central Core Power Node */}
         <circle cx="16" cy="16" r="2.25" fill="#00FF66" />
-        {/* Dynamic Energy Accent Line */}
         <line
           x1="16"
           y1="5"
@@ -66,9 +62,8 @@ export function BeastLogo({ className = "", size = 28, glow = true }: BeastLogoP
 export function BeastBrand({ className = "" }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2.5 font-bold tracking-tight text-white ${className}`}>
-      <BeastLogo size={28} />
-      <span className="text-lg font-mono tracking-wider font-extrabold flex items-center">
-        BEAST<span className="text-[#00FF66]">MQ</span>
+      <span className="text-base font-mono tracking-wider font-extrabold flex items-center">
+        beast<span className="text-[#00FF66]">MQ</span>
       </span>
     </div>
   );

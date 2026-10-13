@@ -85,7 +85,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://github.com/abhinavbist/beastMQ"
+                  href="https://github.com/AbhinavBist-01/beastMQ"
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-[#00FF66] transition-colors flex items-center gap-1"
@@ -105,7 +105,7 @@ export function Footer() {
             <ul className="space-y-2 text-zinc-400 text-xs">
               <li>
                 <a
-                  href="https://github.com/abhinavbist/beastMQ"
+                  href="https://github.com/AbhinavBist-01/beastMQ"
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-[#00FF66] transition-colors flex items-center gap-1"
@@ -116,7 +116,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://github.com/abhinavbist/beastMQ/blob/master/README.md"
+                  href="https://github.com/AbhinavBist-01/beastMQ/blob/master/README.md"
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-[#00FF66] transition-colors flex items-center gap-1"
@@ -127,7 +127,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://github.com/abhinavbist/beastMQ/issues"
+                  href="https://github.com/AbhinavBist-01/beastMQ/issues"
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-[#00FF66] transition-colors flex items-center gap-1"
