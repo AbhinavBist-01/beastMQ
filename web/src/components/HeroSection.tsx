@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { MessageFlowVisualization } from "./MessageFlowVisualization";
+import { Hero3DStream } from "./Hero3DStream";
 import { Copy, Check, ArrowRight, ShieldCheck, Zap } from "lucide-react";
 import { GithubIcon } from "./GithubIcon";
 
@@ -96,9 +96,9 @@ export function HeroSection() {
 
         </div>
 
-        {/* Hero Visual: Interactive Job Playground */}
-        <div className="mt-6">
-          <MessageFlowVisualization />
+        {/* Hero Visual: 3D Interactive WebGL Stream Mesh */}
+        <div className="mt-8">
+          <Hero3DStream />
         </div>
 
       </div>

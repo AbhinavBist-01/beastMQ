@@ -2,6 +2,7 @@ import React from "react";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
 import { ProblemSolution } from "@/components/ProblemSolution";
+import { SkillsEcosystem } from "@/components/SkillsEcosystem";
 import { MetricsStrip } from "@/components/MetricsStrip";
 import { FeatureSection } from "@/components/FeatureSection";
 import { ArchitectureDiagram } from "@/components/ArchitectureDiagram";
@@ -13,37 +14,40 @@ import { Footer } from "@/components/Footer";
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#08090B] text-[#F3F4F6] selection:bg-[#00FF66] selection:text-[#08090B] flex flex-col">
-      {/* Sticky Navigation */}
+      {/* Sticky Minimal Navigation */}
       <Navbar />
 
-      {/* Main Page Content */}
+      {/* Main Page Flow */}
       <main className="flex-1">
-        {/* 1. Hero Section with Live Interactive Job Engine Sandbox */}
+        {/* 1. Hero Section with Interactive 3D WebGL Event Mesh */}
         <HeroSection />
 
-        {/* 2. Before vs. After: Why AI Agents & Apps Need BeastMQ */}
+        {/* 2. Before vs. After: The 3 Fatal Problems AI Agents Face */}
         <ProblemSolution />
 
-        {/* 3. Technical Metrics Strip */}
+        {/* 3. Universal Open Skill: Certified on skills.sh */}
+        <SkillsEcosystem />
+
+        {/* 4. Technical Architectural Metrics */}
         <MetricsStrip />
 
-        {/* 4. Core Capabilities & Primitives */}
+        {/* 5. Core Capabilities (Zero Bloat, Direct Explanations) */}
         <FeatureSection />
 
-        {/* 5. Horizontal Architecture Topology & Lifecycle */}
+        {/* 6. Horizontal Distributed Topology & Lifecycle */}
         <ArchitectureDiagram />
 
-        {/* 6. Code Section with TypeScript SDK & Interactive Terminal */}
+        {/* 7. Code Section with TypeScript SDK & IDE Simulation */}
         <CodeShowcase />
 
-        {/* 7. Developer Experience & CLI Workflows */}
+        {/* 8. Developer Experience & CLI Workflows */}
         <DeveloperExperience />
 
-        {/* 8. Final Closing Call to Action */}
+        {/* 9. Final Call to Action */}
         <FinalCTA />
       </main>
 
-      {/* 9. Footer */}
+      {/* 10. Footer */}
       <Footer />
     </div>
   );
